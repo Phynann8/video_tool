@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+vendor/
+.venv/
+venv/
+env/
+automation-env/
+Lib/site-packages/
+
+# Build outputs
+bin/
+obj/
+dist/
+build/
+out/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Logs/temp
+*.log
+*.tmp
+*.cache
+
+# IDE/system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+!.env.example

@@ -1,0 +1,32 @@
+<UserControl x:Class="Start.UI.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:local="clr-namespace:Start.UI.Views"
+             xmlns:vm="clr-namespace:Start.UI.ViewModels"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    
+    <Grid Margin="20">
+        <StackPanel>
+            <TextBlock Text="Settings" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Margin="0,0,0,20"/>
+            
+            <materialDesign:Card Padding="20">
+                <StackPanel>
+                    <TextBlock Text="General" FontWeight="Bold" Margin="0,0,0,10"/>
+                    
+                    <TextBox Text="{Binding DefaultDownloadPath}" 
+                             materialDesign:HintAssist.Hint="Default Download Path"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             Margin="0,0,0,10"/>
+                             
+                    <Button Command="{Binding BrowseFolderCommand}" Content="Browse" HorizontalAlignment="Right" Style="{StaticResource MaterialDesignOutlinedButton}"/>
+                    
+                    <Button Command="{Binding SaveSettingsCommand}" Content="Save" HorizontalAlignment="Left" Margin="0,20,0,0"/>
+                </StackPanel>
+            </materialDesign:Card>
+        </StackPanel>
+    </Grid>
+</UserControl>
