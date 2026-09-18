@@ -204,6 +204,31 @@ namespace Downloader.Tests
             Assert.Contains(fakeQueue.EnqueuedJobs, j => j.Id == cancelledId);
         }
 
+        [Fact]
+        public async Task DownloadService_RetryAllJobsAsync_RetriesDownloadingAndQueuedJobs()
+        {
+            var bootstrap = new DatabaseBootstrap(_testDbPath);
+            await bootstrap.SetupAsync();
+
+            var repo = new SqliteDownloadRepository(_testDbPath);
+            var dlId = Guid.NewGuid();
+            var qId = Guid.NewGuid();
+            var doneId = Guid.NewGuid();
+
+            await repo.AddJobAsync(new DownloadJob { Id = dlId, Title = "Downloading Job", Status = JobStatus.Downloading, Url = "uDl", SavePath = "C:/tmp" });
+            await repo.AddJobAsync(new DownloadJob { Id = qId, Title = "Queued Job", Status = JobStatus.Queued, Url = "uQ", SavePath = "C:/tmp" });
+            await repo.AddJobAsync(new DownloadJob { Id = doneId, Title = "Done Job", Status = JobStatus.Completed, Url = "uDone", SavePath = "C:/tmp" });
+
+            var fakeQueue = new FakeQueueManager();
+            var service = new DownloadService(Enumerable.Empty<IExtractorEngine>(), repo, fakeQueue);
+
+            await service.RetryAllJobsAsync();
+
+            Assert.Equal(2, fakeQueue.EnqueuedJobs.Count);
+            Assert.Contains(fakeQueue.EnqueuedJobs, j => j.Id == dlId);
+            Assert.Contains(fakeQueue.EnqueuedJobs, j => j.Id == qId);
+        }
+
         private class FakeQueueManager : IQueueManager
         {
 #pragma warning disable CS0067

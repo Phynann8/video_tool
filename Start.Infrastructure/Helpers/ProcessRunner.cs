@@ -65,6 +65,18 @@ namespace Start.Infrastructure.Helpers
 
                 return stdOut;
             }
+            catch (OperationCanceledException)
+            {
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill(entireProcessTree: true);
+                    }
+                }
+                catch { }
+                throw;
+            }
             catch (Exception ex)
             {
                  // Re-throw with more context if needed, or log

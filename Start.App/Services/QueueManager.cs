@@ -32,7 +32,7 @@ namespace Start.App.Services
         private readonly IPowerManagementService? _powerService;
         private readonly IEnumerable<IMediaUrlRefresher> _urlRefreshers;
         private readonly SemaphoreSlim _semaphore;
-        private readonly Dictionary<Guid, CancellationTokenSource> _activeJobs = new();
+        private readonly Dictionary<Guid, CancellationTokenSource> _jobCts = new();
         private readonly HashSet<Guid> _pausedJobs = new();
         private const int MaxConcurrentDownloads = 3;
         private const int MaxTransientAttempts = 3;
@@ -45,9 +45,9 @@ namespace Start.App.Services
         {
             get
             {
-                lock (_activeJobs)
+                lock (_jobCts)
                 {
-                    return _activeJobs.Count;
+                    return _jobCts.Count;
                 }
             }
         }
@@ -67,23 +67,66 @@ namespace Start.App.Services
 
         public void Enqueue(DownloadJob job)
         {
-            _ = ProcessJobAsync(job);
-        }
-
-        private async Task ProcessJobAsync(DownloadJob job)
-        {
-            await _semaphore.WaitAsync();
             var cts = new CancellationTokenSource();
-            lock (_activeJobs)
+            lock (_jobCts)
             {
-                _activeJobs[job.Id] = cts;
+                if (_jobCts.TryGetValue(job.Id, out var existingCts))
+                {
+                    try { existingCts.Cancel(); existingCts.Dispose(); } catch { }
+                }
+                _jobCts[job.Id] = cts;
             }
 
-            _powerService?.PreventSleep();
+            lock (_pausedJobs)
+            {
+                _pausedJobs.Remove(job.Id);
+            }
+
+            _ = ProcessJobAsync(job, cts);
+        }
+
+        private async Task ProcessJobAsync(DownloadJob job, CancellationTokenSource cts)
+        {
+            bool semaphoreAcquired = false;
 
             try
             {
+                lock (_pausedJobs)
+                {
+                    if (_pausedJobs.Contains(job.Id))
+                    {
+                        job.Status = JobStatus.Paused;
+                        job.Speed = string.Empty;
+                        job.Eta = "Paused";
+                        _ = _repository.UpdateJobAsync(job);
+                        JobUpdated?.Invoke(this, job);
+                        return;
+                    }
+                }
+
                 if (job.Status == JobStatus.Cancelled) return;
+
+                // Wait for available concurrency slot; cancel immediately if job is paused or cancelled while queued
+                await _semaphore.WaitAsync(cts.Token);
+                semaphoreAcquired = true;
+
+                // Check again in case it was paused while waiting for semaphore
+                lock (_pausedJobs)
+                {
+                    if (_pausedJobs.Contains(job.Id))
+                    {
+                        job.Status = JobStatus.Paused;
+                        job.Speed = string.Empty;
+                        job.Eta = "Paused";
+                        _ = _repository.UpdateJobAsync(job);
+                        JobUpdated?.Invoke(this, job);
+                        return;
+                    }
+                }
+
+                if (job.Status == JobStatus.Cancelled) return;
+
+                _powerService?.PreventSleep();
 
                 job.Status = JobStatus.Downloading;
                 await _repository.UpdateJobAsync(job);
@@ -136,13 +179,16 @@ namespace Start.App.Services
             }
             finally
             {
-                lock (_activeJobs)
+                lock (_jobCts)
                 {
-                    _activeJobs.Remove(job.Id);
+                    _jobCts.Remove(job.Id);
                 }
                 cts.Dispose();
                 _powerService?.AllowSleep();
-                _semaphore.Release();
+                if (semaphoreAcquired)
+                {
+                    _semaphore.Release();
+                }
             }
         }
 
@@ -151,7 +197,6 @@ namespace Start.App.Services
             IProgress<DownloadJob> progress,
             CancellationToken cancellationToken)
         {
-            // 1. Proactive JIT check: if the signed URL is already marked expired, refresh it before initiating download
             if (job.IsUrlExpired)
             {
                 await TryRefreshJobUrlAsync(job, cancellationToken);
@@ -219,9 +264,14 @@ namespace Start.App.Services
 
         public Task CancelJob(Guid jobId)
         {
-            lock (_activeJobs)
+            lock (_pausedJobs)
             {
-                if (_activeJobs.TryGetValue(jobId, out var cts))
+                _pausedJobs.Remove(jobId);
+            }
+
+            lock (_jobCts)
+            {
+                if (_jobCts.TryGetValue(jobId, out var cts))
                 {
                     cts.Cancel();
                 }
@@ -231,24 +281,19 @@ namespace Start.App.Services
 
         public async Task CancelAll()
         {
-            List<Guid> activeIds;
-            lock (_activeJobs)
+            List<Guid> allIds;
+            lock (_jobCts)
             {
-                activeIds = _activeJobs.Keys.ToList();
+                allIds = _jobCts.Keys.ToList();
             }
 
-            foreach (var id in activeIds)
+            foreach (var id in allIds)
             {
                 await CancelJob(id);
             }
 
             var allJobs = await _repository.GetAllJobsAsync();
-            var nonCompletedJobs = allJobs.Where(j => 
-                j.Status == JobStatus.Queued || 
-                j.Status == JobStatus.Downloading || 
-                j.Status == JobStatus.Processing || 
-                j.Status == JobStatus.PendingAnalysis ||
-                j.Status == JobStatus.Paused).ToList();
+            var nonCompletedJobs = allJobs.Where(j => j.Status != JobStatus.Completed).ToList();
 
             foreach (var job in nonCompletedJobs)
             {
@@ -260,49 +305,72 @@ namespace Start.App.Services
             }
         }
 
-        public Task PauseJob(Guid jobId)
+        public async Task PauseJob(Guid jobId)
         {
             lock (_pausedJobs)
             {
                 _pausedJobs.Add(jobId);
             }
 
-            lock (_activeJobs)
+            lock (_jobCts)
             {
-                if (_activeJobs.TryGetValue(jobId, out var cts))
+                if (_jobCts.TryGetValue(jobId, out var cts))
                 {
                     cts.Cancel();
                 }
             }
-            return Task.CompletedTask;
+
+            var job = await _repository.GetJobAsync(jobId);
+            if (job != null && job.Status != JobStatus.Completed && job.Status != JobStatus.Failed)
+            {
+                job.Status = JobStatus.Paused;
+                job.Speed = string.Empty;
+                job.Eta = "Paused";
+                await _repository.UpdateJobAsync(job);
+                JobUpdated?.Invoke(this, job);
+            }
         }
 
         public async Task ResumeJob(Guid jobId)
         {
+            lock (_pausedJobs)
+            {
+                _pausedJobs.Remove(jobId);
+            }
+
             var job = await _repository.GetJobAsync(jobId);
-            if (job != null && job.Status == JobStatus.Paused)
+            if (job != null && (job.Status == JobStatus.Paused || job.Status == JobStatus.Cancelled || job.Status == JobStatus.Failed))
             {
                 job.Status = JobStatus.Queued;
+                job.Eta = "Queued";
+                job.Speed = string.Empty;
                 await _repository.UpdateJobAsync(job);
+                JobUpdated?.Invoke(this, job);
                 Enqueue(job);
             }
         }
 
         public async Task PauseAll()
         {
-            List<Guid> activeIds;
-            lock (_activeJobs)
+            List<Guid> allIds;
+            lock (_jobCts)
             {
-                activeIds = _activeJobs.Keys.ToList();
+                allIds = _jobCts.Keys.ToList();
             }
 
-            foreach (var id in activeIds)
+            foreach (var id in allIds)
             {
                 await PauseJob(id);
             }
 
             var allJobs = await _repository.GetAllJobsAsync();
-            foreach (var job in allJobs.Where(j => j.Status == JobStatus.Queued || j.Status == JobStatus.Processing || j.Status == JobStatus.PendingAnalysis))
+            var queueJobs = allJobs.Where(j => 
+                j.Status == JobStatus.Downloading ||
+                j.Status == JobStatus.Queued || 
+                j.Status == JobStatus.Processing || 
+                j.Status == JobStatus.PendingAnalysis).ToList();
+
+            foreach (var job in queueJobs)
             {
                 await PauseJob(job.Id);
             }

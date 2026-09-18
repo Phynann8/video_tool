@@ -60,11 +60,15 @@ namespace Start.App.Services
             var job = await _repository.GetJobAsync(jobId);
             if (job == null) throw new ArgumentException("Job not found");
 
+            await _queueManager.CancelJob(jobId);
+
             job.SelectedVideoStream = videoStream;
             job.SelectedAudioStream = audioStream;
             job.IsAudioOnly = videoStream == null && audioStream != null;
             job.SavePath = savePath;
             job.Status = JobStatus.Queued;
+            job.Speed = string.Empty;
+            job.Eta = "Queued";
             
             await _repository.UpdateJobAsync(job);
             
@@ -117,10 +121,7 @@ namespace Start.App.Services
         public async Task RetryAllJobsAsync()
         {
             var allJobs = await _repository.GetAllJobsAsync();
-            var retriable = allJobs.Where(j => 
-                j.Status == JobStatus.Failed || 
-                j.Status == JobStatus.Cancelled || 
-                j.Status == JobStatus.Paused).ToList();
+            var retriable = allJobs.Where(j => j.Status != JobStatus.Completed).ToList();
 
             foreach (var job in retriable)
             {

@@ -93,14 +93,25 @@
 
             <!-- Right Toolbar: Pause All / Resume All, Retry All, Delete All, Back -->
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <!-- PAUSE ALL / RESUME ALL -->
-                <Button Command="{Binding TogglePauseAllCommand}"
+                <!-- PAUSE ALL -->
+                <Button Command="{Binding PauseAllCommand}"
                         Style="{StaticResource QueueToolbarButton}"
                         Background="#26344d" BorderBrush="#3d4f70"
-                        ToolTip="Pause or resume all active downloads">
+                        ToolTip="Pause all active and queued downloads">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="{Binding PauseAllIconKind}" Width="16" Height="16" Foreground="#fdcb6e" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBlock Text="{Binding PauseAllButtonText}" FontSize="12" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                        <materialDesign:PackIcon Kind="Pause" Width="16" Height="16" Foreground="#fdcb6e" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="Pause All" FontSize="12" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- RESUME ALL -->
+                <Button Command="{Binding ResumeAllCommand}"
+                        Style="{StaticResource QueueToolbarButton}"
+                        Background="#1a3556" BorderBrush="#2563eb"
+                        ToolTip="Resume all paused downloads in queue">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Play" Width="16" Height="16" Foreground="#60a5fa" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="Resume All" FontSize="12" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
