@@ -5,7 +5,12 @@ namespace Start.Infrastructure.Helpers
 {
     public static class ProcessRunner
     {
-        public static async Task<string> RunProcessAsync(string fileName, string arguments, CancellationToken cancellationToken, Action<string>? onOutput = null)
+        public static async Task<string> RunProcessAsync(
+            string fileName, 
+            string arguments, 
+            CancellationToken cancellationToken, 
+            Action<string>? onOutput = null,
+            bool allowNonZeroExitWithOutput = false)
         {
             var processStartInfo = new ProcessStartInfo
             {
@@ -48,12 +53,17 @@ namespace Start.Infrastructure.Helpers
 
                 await process.WaitForExitAsync(cancellationToken);
 
+                var stdOut = outputBuilder.ToString();
                 if (process.ExitCode != 0)
                 {
+                    if (allowNonZeroExitWithOutput && !string.IsNullOrWhiteSpace(stdOut) && stdOut.TrimStart().StartsWith("{"))
+                    {
+                        return stdOut;
+                    }
                     throw new Exception($"Process exited with code {process.ExitCode}. Error: {errorBuilder}");
                 }
 
-                return outputBuilder.ToString();
+                return stdOut;
             }
             catch (Exception ex)
             {

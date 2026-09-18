@@ -41,12 +41,13 @@ namespace Start.Infrastructure.Services
                 }
             }
             
-            var arguments = $"-J --no-warnings --user-agent \"{DefaultUserAgent}\" {playlistArg} \"{url}\"".Trim();
+            var authArgs = BuildAuthArguments(url);
+            var arguments = $"-J --no-warnings --ignore-errors --user-agent \"{DefaultUserAgent}\" {playlistArg} {authArgs} \"{url}\"".Trim();
             var resultJobs = new List<DownloadJob>();
             
             try 
             {
-                var jsonOutput = await ProcessRunner.RunProcessAsync(YtDlpExecutable, arguments, CancellationToken.None);
+                var jsonOutput = await ProcessRunner.RunProcessAsync(YtDlpExecutable, arguments, CancellationToken.None, allowNonZeroExitWithOutput: true);
                 var metadata = ParseYtDlpMetadata(jsonOutput);
 
                 if (metadata == null) throw new Exception("Failed to parse yt-dlp output.");
@@ -55,12 +56,35 @@ namespace Start.Infrastructure.Services
                 {
                     // Playlist logic: parse each entry
                     var playlistId = Guid.NewGuid().ToString(); // Grouping ID
+                    int index = 1;
                     foreach (var entry in metadata.Entries)
                     {
-                        if (entry == null) continue;
+                        if (entry == null)
+                        {
+                            // Entry was skipped by yt-dlp (e.g. Tencent pay limit / VIP / DRM protected)
+                            resultJobs.Add(new DownloadJob
+                            {
+                                Id = Guid.NewGuid(),
+                                Url = url,
+                                Title = $"Episode {index:D2} (Locked / VIP / DRM)",
+                                Status = JobStatus.PendingAnalysis,
+                                SourcePlatform = DetectSourcePlatform(url),
+                                PlaylistId = playlistId,
+                                EpisodeNumber = index,
+                                IsLocked = true,
+                                IsSelected = false
+                            });
+                            index++;
+                            continue;
+                        }
                         
                         var job = ParseMetadataToJob(entry, entry.Url ?? url, playlistId);
+                        if (job.EpisodeNumber <= 0)
+                        {
+                            job.EpisodeNumber = index;
+                        }
                         resultJobs.Add(job);
+                        index++;
                     }
                 }
                 else
@@ -88,8 +112,10 @@ namespace Start.Infrastructure.Services
 
         private DownloadJob ParseMetadataToJob(YtDlpMetadata metadata, string originalUrl, string? playlistId)
         {
-            var videoStreams = metadata.Formats
+            var formats = metadata.Formats ?? new List<YtDlpFormat>();
+            var videoStreams = formats
                 .Where(f =>
+                    f != null &&
                     !string.Equals(f.VideoCodec, "none", StringComparison.OrdinalIgnoreCase) &&
                     f.Height.HasValue)
                 .Select(f => new VideoStreamInfo
@@ -104,8 +130,9 @@ namespace Start.Infrastructure.Services
                 .ThenByDescending(v => v.SizeBytes)
                 .ToList();
 
-            var audioStreams = metadata.Formats
+            var audioStreams = formats
                 .Where(f =>
+                    f != null &&
                     string.Equals(f.VideoCodec, "none", StringComparison.OrdinalIgnoreCase) &&
                     !string.Equals(f.AudioCodec, "none", StringComparison.OrdinalIgnoreCase))
                 .Select(f => new AudioStreamInfo
@@ -120,20 +147,32 @@ namespace Start.Infrastructure.Services
                 .ThenByDescending(a => a.SizeBytes)
                 .ToList();
 
+            int epNum = 0;
+            var epMatch = Regex.Match(metadata.Title ?? string.Empty, @"(?:EP|Episode)\s*0*(\d+)", RegexOptions.IgnoreCase);
+            if (epMatch.Success && int.TryParse(epMatch.Groups[1].Value, out int parsedEp))
+            {
+                epNum = parsedEp;
+            }
+
+            bool hasStreams = videoStreams.Count > 0;
+
             return new DownloadJob
             {
                 Id = Guid.NewGuid(),
                 Url = originalUrl,
-                Title = metadata.Title,
-                ThumbnailUrl = metadata.Thumbnail,
+                Title = metadata.Title ?? "Untitled",
+                ThumbnailUrl = metadata.Thumbnail ?? string.Empty,
                 Duration = TimeSpan.FromSeconds(metadata.Duration),
                 Status = JobStatus.PendingAnalysis,
-                SourcePlatform = "Detected",
+                SourcePlatform = DetectSourcePlatform(originalUrl),
                 AvailableVideoStreams = videoStreams,
                 AvailableAudioStreams = audioStreams,
                 SelectedVideoStream = videoStreams.FirstOrDefault(),
                 SelectedAudioStream = audioStreams.FirstOrDefault(),
-                PlaylistId = playlistId
+                PlaylistId = playlistId,
+                EpisodeNumber = epNum,
+                IsLocked = !hasStreams,
+                IsSelected = hasStreams
             };
         }
 

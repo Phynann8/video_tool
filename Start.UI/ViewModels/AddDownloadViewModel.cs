@@ -139,7 +139,15 @@ namespace Start.UI.ViewModels
             foreach (var p in Platforms) p.IsSelected = false;
             value.IsSelected = true;
             
-            Url = !string.IsNullOrEmpty(value.DefaultUrl) ? value.DefaultUrl : string.Empty;
+            if (value.Name.Equals("iQiyi", StringComparison.OrdinalIgnoreCase))
+            {
+                Url = "https://www.iq.com/?lang=en_us";
+            }
+            else
+            {
+                Url = string.Empty;
+            }
+
             ShowsTrending = true;
             CurrentDramaTitle = "No drama loaded";
             CurrentPosterUrl = string.Empty;
@@ -149,14 +157,45 @@ namespace Start.UI.ViewModels
             LogMsg($"Switched to platform: {value.Name}", "#00cec9");
         }
 
+        private static string SanitizeUrl(string rawUrl)
+        {
+            if (string.IsNullOrWhiteSpace(rawUrl)) return string.Empty;
+
+            var trimmed = rawUrl.Trim();
+
+            // Detect and fix accidental concatenated URLs (e.g. iflix.com/...https://www.iflix.com/)
+            int secondHttp = trimmed.IndexOf("https://", 8, StringComparison.OrdinalIgnoreCase);
+            if (secondHttp < 0)
+                secondHttp = trimmed.IndexOf("http://", 8, StringComparison.OrdinalIgnoreCase);
+
+            if (secondHttp > 0)
+            {
+                trimmed = trimmed.Substring(0, secondHttp).TrimEnd('/', ' ');
+            }
+
+            // If it starts with a domain name like iflix.com, kisskh.co, etc. without http
+            if (!trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                if (trimmed.Contains(".com") || trimmed.Contains(".co") || trimmed.Contains(".org") || trimmed.Contains(".net") || trimmed.Contains("/"))
+                {
+                    trimmed = "https://" + trimmed;
+                }
+            }
+
+            return trimmed;
+        }
+
         [RelayCommand]
         private async Task FetchUrl()
         {
-            if (string.IsNullOrWhiteSpace(Url))
+            var targetUrl = SanitizeUrl(Url);
+            if (string.IsNullOrWhiteSpace(targetUrl))
             {
                 LogMsg("Paste a drama URL or book ID before searching.", "#f39c12");
                 return;
             }
+            Url = targetUrl;
 
             IsBusy = true;
             ErrorMessage = string.Empty;
@@ -183,10 +222,17 @@ namespace Start.UI.ViewModels
                 }
 
                 CurrentDramaTitle = firstJob.Title.Split('-').FirstOrDefault()?.Trim() ?? "Drama";
+                if (string.IsNullOrWhiteSpace(CurrentDramaTitle) || CurrentDramaTitle == "Drama")
+                {
+                    CurrentDramaTitle = firstJob.Title.Split(':').LastOrDefault()?.Trim() ?? firstJob.Title;
+                }
                 CurrentPosterUrl = firstJob.ThumbnailUrl;
                 TotalEpisodes = jobs.Count;
 
-                var distinctResolutions = firstJob.AvailableVideoStreams
+                var playableJobs = jobs.Where(j => !j.IsLocked && j.AvailableVideoStreams.Any()).ToList();
+                var refJob = playableJobs.FirstOrDefault() ?? firstJob;
+
+                var distinctResolutions = refJob.AvailableVideoStreams
                     .Select(s => s.Resolution)
                     .Distinct()
                     .ToList();
@@ -204,8 +250,15 @@ namespace Start.UI.ViewModels
                     Episodes.Add(job);
                 }
                 
-                LogMsg($"Found {TotalEpisodes} episodes. Available qualities: {string.Join(", ", AvailableQualities)}", "#fdcb6e");
-                LogMsg($"OK: {CurrentDramaTitle} | {TotalEpisodes} episode(s)", "#00b894");
+                int playableCount = playableJobs.Count;
+                int lockedCount = jobs.Count - playableCount;
+
+                LogMsg($"Found {TotalEpisodes} episode(s). Playable: {playableCount}{(lockedCount > 0 ? $", VIP/Locked: {lockedCount}" : "")}.", "#fdcb6e");
+                if (AvailableQualities.Any())
+                {
+                    LogMsg($"Available qualities: {string.Join(", ", AvailableQualities)}", "#fdcb6e");
+                }
+                LogMsg($"OK: {CurrentDramaTitle} | {playableCount} episode(s) ready", "#00b894");
             }
             catch (Exception ex)
             {
