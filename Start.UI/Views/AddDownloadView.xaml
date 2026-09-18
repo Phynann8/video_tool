@@ -4,85 +4,391 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-             xmlns:local="clr-namespace:Start.UI.Views"
-             xmlns:vm="clr-namespace:Start.UI.ViewModels"
+             xmlns:viewmodels="clr-namespace:Start.UI.ViewModels"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+             d:DataContext="{d:DesignInstance Type=viewmodels:AddDownloadViewModel}"
+             Background="#0f1b2d" Foreground="White"
+             materialDesign:ThemeAssist.Theme="Dark"
+             d:DesignHeight="700" d:DesignWidth="1100">
 
-        <!-- Input Section -->
-        <materialDesign:Card Padding="20" Margin="0,0,0,20">
-            <StackPanel>
-                <TextBlock Text="Add New Download" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Margin="0,0,0,15"/>
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <viewmodels:EpisodeColorConverter x:Key="EpisodeColorConverter"/>
+        <viewmodels:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+        <viewmodels:CountToVisibilityConverter x:Key="CountToVisibilityConverter" />
+        <viewmodels:ImageUrlConverter x:Key="ImageUrlConverter" />
+        <viewmodels:ProgressWidthConverter x:Key="ProgressWidthConverter" />
+        <viewmodels:JobStatusToColorConverter x:Key="JobStatusToColorConverter" />
+        <viewmodels:JobStatusToStopVisConverter x:Key="JobStatusToStopVisConverter" />
+        
+        <Style x:Key="LogTextStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Consolas, Couriser New, monospace"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="0,2"/>
+        </Style>
+
+        <Style x:Key="PlatformButtonStyle" TargetType="RadioButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="border" Background="#161626" BorderBrush="#2c4f7c" BorderThickness="1" CornerRadius="8" Padding="15,6" Margin="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#00b894" Offset="0"/>
+                                            <GradientStop Color="#00cec9" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#00a86b"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#ff522e"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style TargetType="ScrollBar" BasedOn="{StaticResource {x:Type ScrollBar}}">
+            <Setter Property="Background" Value="#10151f" />
+        </Style>
+
+        <!-- Override Material Design Paper color to ensure popups are dark -->
+        <SolidColorBrush x:Key="MaterialDesignPaper" Color="#161626" />
+        
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="60"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="150"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Top Platform Bar -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#161626" BorderBrush="#2c4f7c" BorderThickness="0,0,0,1">
+            <Grid>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="20,0">
+                    <TextBlock Text="▶ Universal Media Downloader" FontWeight="Bold" Foreground="#ff522e" VerticalAlignment="Center" FontSize="18"/>
+                </StackPanel>
+                
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="Source:" Foreground="#a0aabf" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                    <ComboBox ItemsSource="{Binding Platforms}" SelectedItem="{Binding SelectedPlatform}" 
+                              Width="220" Background="#10151f" Foreground="White" FontSize="14" 
+                              BorderBrush="#2c4f7c" materialDesign:HintAssist.Background="#10151f">
+                        <ComboBox.Resources>
+                            <SolidColorBrush x:Key="MaterialDesignPaper" Color="#161626"/>
+                        </ComboBox.Resources>
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="5,0">
+                                    <TextBlock Text="▶ " Foreground="{Binding IconColor}" FontWeight="Bold" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Left Sidebar (App info & controls) -->
+        <Border Grid.Row="1" Grid.Column="0" Background="#1a1a2e" BorderBrush="#ff0048" BorderThickness="1,1,1,1" Margin="10,10,5,10" CornerRadius="8">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Margin="0,0,0,5">
+                    <StackPanel>
+                        <!-- Platform Header -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5">
+                            <TextBlock Text="▶ " Foreground="#ff0048" FontWeight="Bold" FontSize="20" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding SelectedPlatform.Name}" Foreground="#ff522e" FontWeight="Bold" FontSize="20" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <TextBlock Text="✅ 1-Month Trial (All PC) (29d left)" Foreground="#00b894" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,15"/>
+
+                        <!-- Current Drama Poster Box -->
+                        <Border BorderBrush="#33334a" BorderThickness="1" CornerRadius="8" Height="220" Background="#12121e" Margin="10,0">
+                            <Grid>
+                                <TextBlock Text="No Poster" Foreground="#555577" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding ShowsTrending, Converter={StaticResource BoolToVis}}"/>
+                                <!-- ImageUrlConverter safely handles empty/null URL - no more NotSupportedException -->
+                                <Image Source="{Binding CurrentPosterUrl, Converter={StaticResource ImageUrlConverter}}"
+                                       Stretch="UniformToFill"/>
+                            </Grid>
+                        </Border>
+                        
+                        <!-- Drama Details -->
+                        <TextBlock Text="{Binding CurrentDramaTitle}" FontWeight="Bold" Foreground="White" FontSize="14" HorizontalAlignment="Center" Margin="10,15,10,5" TextWrapping="Wrap" TextAlignment="Center"/>
+                        
+                        <Grid Margin="20,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding TotalEpisodes}" Foreground="#ff6644" FontWeight="Bold" FontSize="24" HorizontalAlignment="Center"/>
+                                <TextBlock Text="EPs" Foreground="#8888aa" FontSize="10" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding SelectedCount}" Foreground="#ff6644" FontWeight="Bold" FontSize="24" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Selected" Foreground="#8888aa" FontSize="10" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Fast Action Buttons -->
+                        <Grid Margin="5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Button Grid.Row="0" Grid.Column="0" Content="Poster" Background="#2a2a40" Foreground="White" BorderThickness="0" Margin="2" Padding="5" FontSize="11"/>
+                            <Button Grid.Row="0" Grid.Column="1" Content="Browse" Command="{Binding BrowseFolderCommand}" Background="#2a2a40" Foreground="Yellow" BorderThickness="0" Margin="2" Padding="5" FontSize="11"/>
+                            <Button Grid.Row="1" Grid.Column="0" Content="Activate" Background="#2a2a40" Foreground="Orange" BorderThickness="0" Margin="2" Padding="5" FontSize="11"/>
+                            <Button Grid.Row="1" Grid.Column="1" Content="Support" Background="#2a2a40" Foreground="Red" BorderThickness="0" Margin="2" Padding="5" FontSize="11"/>
+                        </Grid>
+
+                        <TextBlock Text="QUALITY" Foreground="#555577" FontSize="10" FontWeight="Bold" Margin="8,10,0,2"/>
+                        <ComboBox ItemsSource="{Binding AvailableQualities}" SelectedItem="{Binding SelectedQuality}"
+                                  Background="#12121e" Foreground="White" BorderBrush="#33334a" BorderThickness="1" 
+                                  Padding="5,3" FontSize="11" Margin="5,0"
+                                  Visibility="{Binding AvailableQualities.Count, Converter={StaticResource CountToVisibilityConverter}}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Foreground="White"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        
+                        <TextBlock Text="SAVE TO" Foreground="#555577" FontSize="10" FontWeight="Bold" Margin="8,10,0,2"/>
+                        <TextBox Text="{Binding SavePath}" Background="#12121e" Foreground="White" BorderBrush="#33334a" BorderThickness="1" Padding="5" FontSize="10" Margin="5,0"/>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Action Buttons Bottom -->
+                <StackPanel Grid.Row="1" Margin="5">
+                    <Button Content="Download Selected" Command="{Binding StartDownloadCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}"
+                            FontWeight="Bold" Foreground="White" BorderThickness="0" Margin="0,5" Height="38">
+                        <Button.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#00b894" Offset="0"/>
+                                <GradientStop Color="#0984e3" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Button.Background>
+                    </Button>
+                    <Button Content="Cancel" Command="{Binding BackToTrendingCommand}" Background="#2a2a40" Foreground="White" BorderThickness="0" Height="30" Margin="0,5"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content (Input & Episodes/Trending) -->
+        <Grid Grid.Row="1" Grid.Column="1" Margin="5,10,10,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="155"/>
+            </Grid.RowDefinitions>
+
+            <!-- URL Input Bar -->
+            <Border Background="#1a1a2e" BorderBrush="#2c4f7c" BorderThickness="1" CornerRadius="8" Padding="10">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     
-                    <TextBox Text="{Binding Url, UpdateSourceTrigger=PropertyChanged}" 
-                             materialDesign:HintAssist.Hint="Paste URL here (YouTube, Facebook, TikTok...)"
-                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                             VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBox Grid.Column="0" Text="{Binding Url, UpdateSourceTrigger=PropertyChanged}" Background="#12121e" Foreground="White" BorderBrush="#2c4f7c" BorderThickness="1" Padding="10,8" VerticalContentAlignment="Center"
+                             materialDesign:HintAssist.Hint="Paste drama URL or book ID..."/>
                     
-                    <Button Grid.Column="1" Command="{Binding AnalyzeUrlCommand}" 
-                            Content="Analyze" 
-                            Style="{StaticResource MaterialDesignRaisedButton}"
-                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}"/> 
+                    <Button Grid.Column="1" Content="Search" Command="{Binding FetchUrlCommand}" IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBooleanConverter}}"
+                            Margin="10,0,0,0" Width="100" FontWeight="Bold" Foreground="White" BorderThickness="0">
+                        <Button.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#6c5ce7" Offset="0"/>
+                                <GradientStop Color="#d946ef" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Button.Background>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Content Container -->
+            <Border Grid.Row="1" Background="#1a1a2e" BorderBrush="#2c4f7c" BorderThickness="1" CornerRadius="8" Margin="0,10,0,0">
+                
+                <Grid>
+                    <!-- Trending View placeholder -->
+                    <Grid Visibility="{Binding ShowsTrending, Converter={StaticResource BoolToVis}}" Margin="20">
+                        <TextBlock Text="Welcome! Paste a URL above or choose a Trending Drama (Coming Soon)" Foreground="#8888aa" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Episodes View -->
+                    <Grid Margin="15" Visibility="{Binding ShowsTrending, Converter={StaticResource InverseBooleanConverter}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <Grid Grid.Row="0" Margin="0,0,0,10">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="&lt; Back" Command="{Binding BackToTrendingCommand}" Background="#2a2a40" Foreground="White" BorderThickness="0" Padding="8,4" FontSize="11" Margin="0,0,15,0"/>
+                                <TextBlock Text="Episodes" Foreground="White" FontWeight="Bold" FontSize="16" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding TotalEpisodes, StringFormat='1 - \{0\}'}" Foreground="#ff522e" FontSize="13" VerticalAlignment="Center" Margin="15,0"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="All" Command="{Binding SelectAllNodesCommand}" Background="#2a2a40" Foreground="White" BorderThickness="0" Padding="12,4" FontSize="11" Margin="0,0,5,0"/>
+                                <Button Content="None" Command="{Binding SelectNoneNodesCommand}" Background="#2a2a40" Foreground="White" BorderThickness="0" Padding="12,4" FontSize="11"/>
+                            </StackPanel>
+                        </Grid>
+                        
+                        <!-- Episodes Grid -->
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding Episodes}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" ItemWidth="50" ItemHeight="35"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Margin="2" Padding="2" Command="{Binding DataContext.ToggleEpisodeSelectionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" BorderThickness="0">
+                                            <Button.Background>
+                                                <SolidColorBrush Color="{Binding IsSelected, Converter={StaticResource EpisodeColorConverter}}"/>
+                                            </Button.Background>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="🔒" Foreground="#ffcc00" FontSize="10" VerticalAlignment="Center" Margin="0,0,3,0" Visibility="{Binding IsLocked, Converter={StaticResource BoolToVis}}"/>
+                                                <TextBlock Text="{Binding EpisodeNumber}" Foreground="White" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Background="#15182a" BorderBrush="#2c4f7c" BorderThickness="1" CornerRadius="8" Margin="0,10,0,0" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock Text="Downloads" Foreground="White" FontWeight="Bold" FontSize="14"/>
+                        <TextBlock Text="Progress stays here while you keep searching." Foreground="#8888aa" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <Grid Grid.Row="1" Visibility="{Binding HasDownloadJobs, Converter={StaticResource InverseBooleanConverter}}">
+                        <TextBlock Text="No downloads queued yet." Foreground="#8888aa" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Visibility="{Binding HasDownloadJobs, Converter={StaticResource BoolToVis}}">
+                        <ItemsControl ItemsSource="{Binding DownloadJobs}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="42"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="44"/>
+                                            <ColumnDefinition Width="30"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Image Source="{Binding ThumbnailUrl}" Width="36" Height="36" Stretch="UniformToFill"/>
+
+                                        <StackPanel Grid.Column="1" Margin="8,0">
+                                            <TextBlock Text="{Binding Title}" Foreground="White" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                            <Grid Margin="0,4,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Status}" Foreground="#8888aa" FontSize="11" Margin="0,0,8,0"/>
+
+                                                <!-- Two-layer progress bar: purple track (fixed) + green fill (grows) -->
+                                                <Border Grid.Column="1" CornerRadius="4" Height="8"
+                                                        Background="#6c5ce7" VerticalAlignment="Center"
+                                                        x:Name="ProgressTrack">
+                                                    <Grid>
+                                                        <Border CornerRadius="4" HorizontalAlignment="Left"
+                                                                Background="{Binding Status, Converter={StaticResource JobStatusToColorConverter}}">
+                                                            <Border.Width>
+                                                                <MultiBinding Converter="{StaticResource ProgressWidthConverter}">
+                                                                    <Binding Path="Progress"/>
+                                                                    <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Border, AncestorLevel=1}"/>
+                                                                </MultiBinding>
+                                                            </Border.Width>
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+
+                                                <TextBlock Grid.Column="2" Text="{Binding Speed}" Foreground="#8888aa" FontSize="11" Margin="8,0,0,0" TextTrimming="CharacterEllipsis" MaxWidth="220"/>
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <TextBlock Grid.Column="2" Text="{Binding Progress, StringFormat={}{0:0}%}" Foreground="#00cec9" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+
+                                        <!-- Stop / Cancel button (only shown while actively downloading) -->
+                                        <Button Grid.Column="3"
+                                                Command="{Binding DataContext.CancelDownloadCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"
+                                                Visibility="{Binding Status, Converter={StaticResource JobStatusToStopVisConverter}}"
+                                                Background="#c0392b" Foreground="White" BorderThickness="0"
+                                                Width="22" Height="22" Padding="0"
+                                                ToolTip="Stop download"
+                                                FontSize="10" FontWeight="Bold" Content="✕"
+                                                VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Bottom Log Area -->
+        <Border Grid.Row="2" Grid.ColumnSpan="2" Background="#12121e" BorderBrush="#ff522e" BorderThickness="0,1,0,0">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <Grid Margin="0,0,0,5">
+                    <TextBlock Text="Log" Foreground="White" FontWeight="Bold"/>
+                    <Button Content="Clear" Command="{Binding ClearLogsCommand}" Background="Transparent" Foreground="#8888aa" HorizontalAlignment="Right" Padding="0" BorderThickness="0" Height="20"/>
                 </Grid>
                 
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="Red" Margin="0,5" Visibility="{Binding ErrorMessage, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                
-                <ProgressBar IsIndeterminate="True" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,10,0,0"/>
-            </StackPanel>
-        </materialDesign:Card>
-
-        <!-- Analysis Result -->
-        <materialDesign:Card Grid.Row="1" Padding="20" Visibility="{Binding AnalyzedJob, Converter={StaticResource NullToVisibilityConverter}}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="200"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                
-                <Image Source="{Binding AnalyzedJob.ThumbnailUrl}" Stretch="UniformToFill" Height="120"/>
-                
-                <StackPanel Grid.Column="1" Margin="20,0,0,0">
-                    <TextBlock Text="{Binding AnalyzedJob.Title}" FontWeight="Bold" FontSize="16" TextWrapping="Wrap"/>
-                    <TextBlock Text="{Binding AnalyzedJob.Duration}" Margin="0,5"/>
-                    
-                    <CheckBox
-                        Margin="0,10,0,4"
-                        Content="Download audio only (MP3)"
-                        IsChecked="{Binding IsAudioOnly}" />
-
-                    <ComboBox
-                        Margin="0,4"
-                        materialDesign:HintAssist.Hint="Select Video Stream"
-                        Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                        ItemsSource="{Binding VideoStreams}"
-                        SelectedItem="{Binding SelectedVideoStream}"
-                        DisplayMemberPath="DisplayName"
-                        IsEnabled="{Binding IsAudioOnly, Converter={StaticResource InverseBooleanConverter}}" />
-
-                    <ComboBox
-                        Margin="0,4"
-                        materialDesign:HintAssist.Hint="Select Audio Stream"
-                        Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                        ItemsSource="{Binding AudioStreams}"
-                        SelectedItem="{Binding SelectedAudioStream}"
-                        DisplayMemberPath="DisplayName" />
-                    
-                    <Button Command="{Binding StartDownloadCommand}" Content="Download Now" HorizontalAlignment="Left" Margin="0,10"/>
-                </StackPanel>
+                <ScrollViewer x:Name="LogViewer" Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Logs}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Text}" Foreground="{Binding Color}" Style="{StaticResource LogTextStyle}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </Grid>
-        </materialDesign:Card>
-
+        </Border>
     </Grid>
 </UserControl>

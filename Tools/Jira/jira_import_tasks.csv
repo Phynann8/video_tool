@@ -1,0 +1,25 @@
+Issue Type,Summary,Description,Priority,Status,Epic Name,Epic Link,Sprint
+Epic,Networking & Download Acceleration Engine,Dynamic file segmentation with work stealing and connection re-use,High,In Progress,Networking Engine,,
+Epic,Browser & Windows System Integration,Native extensions and OS shell integrations,High,In Progress,System Integration,,
+Epic,Media Extractors & Platform Scrapers,Site-specific extractors and playlist parsing,Medium,In Progress,Platform Extractors,,
+Epic,UI Polish & Queue Management,WPF queue controls and settings persistence,Medium,To Do,UI Polish,,
+Task,Implement HTTP Range Capability Probing,Send HEAD and Range 0-0 probes to verify server byte-range support,High,Done,,Networking Engine,Sprint 1 - Foundation & Parity
+Task,Implement Dynamic File Segmentation,Partition files into up to 32 parallel streams adaptively,High,Done,,Networking Engine,Sprint 1 - Foundation & Parity
+Task,Implement Dynamic Work-Stealing Algorithm,Split remaining bytes of slowest active streams when a worker goes idle,High,Done,,Networking Engine,Sprint 1 - Foundation & Parity
+Task,Configure SocketsHttpHandler Connection Pooling,Enable long-lived keep-alive TCP socket re-use without repeat TLS handshakes,High,Done,,Networking Engine,Sprint 1 - Foundation & Parity
+Task,Implement Offset-Indexed Local Assembly,Verify zero byte gaps and merge .part files sequentially into final media,High,Done,,Networking Engine,Sprint 1 - Foundation & Parity
+Task,Manifest V3 Browser Extension,Create Chrome and Edge WebExtension with Context Menu and Popup,High,Done,,System Integration,Sprint 1 - Foundation & Parity
+Task,.NET 9 Native Messaging Host,Create Chromium Native Messaging console host with 4-byte length framing,High,Done,,System Integration,Sprint 1 - Foundation & Parity
+Task,Windows Named Pipe IPC Bridge,Bridge browser extension payloads into desktop UI via NamedPipeServerStream,High,Done,,System Integration,Sprint 1 - Foundation & Parity
+Task,Windows Taskbar Progress Integration,Connect Window.TaskbarItemInfo (ITaskbarList3) to active download queue,Medium,Done,,System Integration,Sprint 1 - Foundation & Parity
+Task,Native Win32 System Tray & Balloon Alerts,Implement Shell_NotifyIcon with minimize-to-tray and completion notifications,Medium,Done,,System Integration,Sprint 1 - Foundation & Parity
+Task,Win32 Power Management (Sleep Prevention),Use SetThreadExecutionState to prevent system sleep during active downloads,High,Done,,System Integration,Sprint 1 - Foundation & Parity
+Story,Make Worker Count and Segment Size Configurable,Allow user to adjust max concurrent streams (1-32) and min slice size in Settings,Medium,To Do,,Networking Engine,Sprint 2 - Resiliency & Features
+Story,Persistent Resumable Downloads Across Restarts,Persist segment state manifest to SQLite so interrupted downloads resume seamlessly,High,To Do,,Networking Engine,Sprint 2 - Resiliency & Features
+Story,Bandwidth Limiter / Speed Capping,Add configurable maximum download speed limiter per job and globally,Medium,To Do,,Networking Engine,Sprint 2 - Resiliency & Features
+Story,Investigate Upstream DramaBox 403/404 Responses,Resolve changing DramaBox upstream signing requirements and verify live downloads,High,To Do,,Platform Extractors,Sprint 2 - Resiliency & Features
+Story,Add Pause and Resume Controls in Queue View,Expose interactive Pause/Resume buttons for individual jobs and entire queue,High,To Do,,UI Polish,Sprint 2 - Resiliency & Features
+Story,Settings Persistence,Persist default download folder and audio extraction preferences to SQLite,Medium,To Do,,UI Polish,Sprint 2 - Resiliency & Features
+Story,Clipboard Monitor Setting Toggle,Provide an on/off toggle and visual status badge for clipboard monitoring in UI,Low,To Do,,System Integration,Sprint 2 - Backlog
+Story,Windows Task Scheduler Integration,Allow scheduling downloads during off-peak hours via Windows Task Scheduler,Low,To Do,,System Integration,Sprint 2 - Backlog
+Story,Full Integration Tests for KissKH and Iflix,Add automated test coverage for multi-episode album scraping and CDN extraction,Medium,To Do,,Platform Extractors,Sprint 2 - Backlog

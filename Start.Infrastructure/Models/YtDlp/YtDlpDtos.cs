@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace Start.Infrastructure.Models.YtDlp
 {
@@ -10,6 +11,9 @@ namespace Start.Infrastructure.Models.YtDlp
         [JsonProperty("title")]
         public string Title { get; set; } = string.Empty;
 
+        [JsonProperty("url")]
+        public string Url { get; set; } = string.Empty;
+
         [JsonProperty("thumbnail")]
         public string Thumbnail { get; set; } = string.Empty;
 
@@ -18,6 +22,12 @@ namespace Start.Infrastructure.Models.YtDlp
 
         [JsonProperty("formats")]
         public List<YtDlpFormat> Formats { get; set; } = new();
+
+        [JsonProperty("_type")]
+        public string Type { get; set; } = string.Empty;
+
+        [JsonProperty("entries")]
+        public List<YtDlpMetadata> Entries { get; set; } = new();
     }
 
     public class YtDlpFormat

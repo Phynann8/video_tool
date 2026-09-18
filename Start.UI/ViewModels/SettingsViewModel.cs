@@ -6,12 +6,20 @@ namespace Start.UI.ViewModels
 {
     public partial class SettingsViewModel : ObservableObject
     {
+        public event EventHandler? BackRequested;
+
         [ObservableProperty]
         private string _defaultDownloadPath;
 
         public SettingsViewModel()
         {
             _defaultDownloadPath = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
+        }
+
+        [RelayCommand]
+        private void Back()
+        {
+            BackRequested?.Invoke(this, EventArgs.Empty);
         }
 
         [RelayCommand]

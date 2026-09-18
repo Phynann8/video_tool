@@ -24,31 +24,62 @@ namespace Start.UI.ViewModels
         public void NavigateToAddDownload()
         {
             var vm = _serviceProvider.GetRequiredService<AddDownloadViewModel>();
-            
-            // Unsubscribe to avoid leaks if transient (though weak events preferred, simple unsubscribe ok for now)
-            vm.OnDownloadStarted -= OnDownloadStartedHandler;
-            vm.OnDownloadStarted += OnDownloadStartedHandler;
-            
+            vm.NavigateToQueueRequested -= OnNavigateToQueue;
+            vm.NavigateToQueueRequested += OnNavigateToQueue;
+            vm.NavigateToHistoryRequested -= OnNavigateToHistory;
+            vm.NavigateToHistoryRequested += OnNavigateToHistory;
+            vm.NavigateToSettingsRequested -= OnNavigateToSettings;
+            vm.NavigateToSettingsRequested += OnNavigateToSettings;
             CurrentView = new AddDownloadView { DataContext = vm };
         }
 
-        private void OnDownloadStartedHandler(object? sender, EventArgs e)
+        private void OnNavigateToQueue(object? sender, EventArgs e) => NavigateToQueue();
+        private void OnNavigateToHistory(object? sender, EventArgs e) => NavigateToHistory();
+        private void OnNavigateToSettings(object? sender, EventArgs e) => NavigateToSettings();
+
+        public void SetClipboardUrl(string url)
         {
-             NavigateToQueue();
+            if (CurrentView is not AddDownloadView)
+                NavigateToAddDownload();
+
+            if (CurrentView is AddDownloadView currentView &&
+                currentView.DataContext is AddDownloadViewModel viewModel)
+            {
+                viewModel.Url = url;
+            }
+        }
+
+        public void SetInterceptedDownload(string url, string? cookies = null, string? referer = null, string? userAgent = null, string? title = null)
+        {
+            if (CurrentView is not AddDownloadView)
+                NavigateToAddDownload();
+
+            if (CurrentView is AddDownloadView currentView &&
+                currentView.DataContext is AddDownloadViewModel viewModel)
+            {
+                viewModel.Url = url;
+                if (!string.IsNullOrWhiteSpace(title) && viewModel.CurrentDramaTitle == "No drama loaded")
+                {
+                    viewModel.CurrentDramaTitle = title;
+                }
+            }
         }
 
         [RelayCommand]
         public void NavigateToQueue()
         {
             var vm = _serviceProvider.GetRequiredService<QueueViewModel>();
-            vm.StartAutoRefresh(); 
-            // Note: StopAutoRefresh logic needed when navigating away if singleton? 
-            // If Transient, simple GC might not stop timer if it holds ref? 
-            // For MVP transient is okay, but timer needs disposal. 
-            // Better: LoadJobs call once, and refresh button. Or keep it simple.
+            vm.BackRequested -= OnQueueBackRequested;
+            vm.BackRequested += OnQueueBackRequested;
+            vm.StartAutoRefresh();
             
             CurrentView = new QueueView { DataContext = vm };
-            _ = vm.LoadJobs(); // Fire and forget (intentionally not awaited)
+            _ = vm.LoadJobs();
+        }
+
+        private void OnQueueBackRequested(object? sender, EventArgs e)
+        {
+            NavigateToAddDownload();
         }
 
         [RelayCommand]
@@ -63,7 +94,14 @@ namespace Start.UI.ViewModels
         public void NavigateToSettings()
         {
             var vm = _serviceProvider.GetRequiredService<SettingsViewModel>();
+            vm.BackRequested -= OnSettingsBackRequested;
+            vm.BackRequested += OnSettingsBackRequested;
             CurrentView = new SettingsView { DataContext = vm };
+        }
+
+        private void OnSettingsBackRequested(object? sender, EventArgs e)
+        {
+            NavigateToAddDownload();
         }
     }
 }

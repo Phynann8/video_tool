@@ -72,5 +72,24 @@ namespace Start.Infrastructure.Data
             }
             return jobs;
         }
+
+        public async Task<IEnumerable<DownloadJob>> GetJobsByStatusAsync(IEnumerable<JobStatus> statuses, int limit = 100)
+        {
+            var statusInts = statuses.Select(s => (int)s).ToList();
+            if (statusInts.Count == 0) return Enumerable.Empty<DownloadJob>();
+
+            using var connection = new SqliteConnection(_connectionString);
+            var sql = "SELECT JsonData FROM Jobs WHERE Status IN @Statuses ORDER BY CreatedAt DESC LIMIT @Limit";
+            
+            var jsonDatas = await connection.QueryAsync<string>(sql, new { Statuses = statusInts, Limit = limit });
+            
+            var jobs = new List<DownloadJob>();
+            foreach (var json in jsonDatas)
+            {
+                var job = JsonConvert.DeserializeObject<DownloadJob>(json);
+                if (job != null) jobs.Add(job);
+            }
+            return jobs;
+        }
     }
 }

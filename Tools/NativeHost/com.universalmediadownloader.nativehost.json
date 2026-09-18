@@ -1,0 +1,11 @@
+{
+  "name": "com.universalmediadownloader.nativehost",
+  "description": "Universal Media Downloader Native Messaging Host",
+  "path": "bin\\Debug\\net9.0\\UniversalMediaDownloader.NativeHost.exe",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://*",
+    "chrome-extension://knldjmfmopnpolahpmmgbagdohdnhkbe/",
+    "chrome-extension://*"
+  ]
+}

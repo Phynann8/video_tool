@@ -12,6 +12,7 @@ namespace Start.UI.ViewModels
     {
         private readonly IDownloadService _downloadService;
         private readonly DispatcherTimer _timer;
+        public event EventHandler? BackRequested;
 
         [ObservableProperty]
         private ObservableCollection<DownloadJob> _jobs = new();
@@ -49,6 +50,13 @@ namespace Start.UI.ViewModels
         
         public void StartAutoRefresh() => _timer.Start();
         public void StopAutoRefresh() => _timer.Stop();
+
+        [RelayCommand]
+        private void Back()
+        {
+            StopAutoRefresh();
+            BackRequested?.Invoke(this, EventArgs.Empty);
+        }
 
         [RelayCommand]
         private async Task CancelJob(DownloadJob job)

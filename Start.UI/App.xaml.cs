@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,8 +34,14 @@ namespace Start.UI
             services.AddSingleton<IDownloadRepository>(provider => new SqliteDownloadRepository(dbPath));
             services.AddSingleton<DatabaseBootstrap>(provider => new DatabaseBootstrap(dbPath));
             
+            services.AddSingleton<DramaboxClient>();
             services.AddSingleton<IExtractorEngine, YtDlpExtractorEngine>();
-            services.AddSingleton<IDownloadEngine, YtDlpDownloadEngine>();
+            services.AddSingleton<IExtractorEngine, DramaBoxExtractorEngine>();
+            services.AddSingleton<IExtractorEngine, IflixExtractorEngine>();
+            services.AddSingleton<IExtractorEngine, KissKhExtractorEngine>();
+            services.AddSingleton<YtDlpDownloadEngine>();
+            services.AddSingleton<HttpDownloadEngine>();
+            services.AddSingleton<IDownloadEngine, RoutingDownloadEngine>();
             services.AddSingleton<IMediaProcessor, FfmpegMediaProcessor>();
             
             // App Services

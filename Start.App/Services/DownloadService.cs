@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Start.Core.Interfaces;
@@ -9,34 +10,46 @@ namespace Start.App.Services
 {
     public interface IDownloadService
     {
-        Task<DownloadJob> AnalyzeUrlAsync(string url);
+        Task<List<DownloadJob>> AnalyzeUrlAsync(string url);
         Task StartDownloadAsync(Guid jobId, VideoStreamInfo? videoStream, AudioStreamInfo? audioStream, string savePath);
         Task<IEnumerable<DownloadJob>> GetHistoryAsync();
+        Task<IEnumerable<DownloadJob>> GetActiveJobsAsync(int limit = 100);
+        Task<IEnumerable<DownloadJob>> GetCompletedHistoryJobsAsync(int limit = 100);
+        Task<DownloadJob?> GetJobAsync(Guid id);
         Task RetryJobAsync(Guid jobId);
-        Task CancelJobAsync(Guid jobId); // Placeholder for cancellation logic
+        Task CancelJobAsync(Guid jobId);
+        Task PauseJobAsync(Guid jobId);
+        Task ResumeJobAsync(Guid jobId);
+        Task PauseAllJobsAsync();
+        Task ResumeAllJobsAsync();
     }
 
     public class DownloadService : IDownloadService
     {
-        private readonly IExtractorEngine _extractor;
+        private readonly IEnumerable<IExtractorEngine> _extractors;
         private readonly IDownloadRepository _repository;
         private readonly IQueueManager _queueManager;
 
         public DownloadService(
-            IExtractorEngine extractor, 
+            IEnumerable<IExtractorEngine> extractors, 
             IDownloadRepository repository, 
             IQueueManager queueManager)
         {
-            _extractor = extractor;
+            _extractors = extractors;
             _repository = repository;
             _queueManager = queueManager;
         }
 
-        public async Task<DownloadJob> AnalyzeUrlAsync(string url)
+        public async Task<List<DownloadJob>> AnalyzeUrlAsync(string url)
         {
-            var job = await _extractor.AnalyzeUrlAsync(url);
-            await _repository.AddJobAsync(job);
-            return job;
+            // Route to the correct extractor based on URL
+            var extractor = ResolveExtractor(url);
+            var jobs = await extractor.AnalyzeUrlAsync(url);
+            foreach (var job in jobs)
+            {
+                await _repository.AddJobAsync(job);
+            }
+            return jobs;
         }
 
         public async Task StartDownloadAsync(Guid jobId, VideoStreamInfo? videoStream, AudioStreamInfo? audioStream, string savePath)
@@ -60,6 +73,35 @@ namespace Start.App.Services
             return await _repository.GetAllJobsAsync();
         }
 
+        public async Task<IEnumerable<DownloadJob>> GetActiveJobsAsync(int limit = 100)
+        {
+            var activeStatuses = new[]
+            {
+                JobStatus.PendingAnalysis,
+                JobStatus.Queued,
+                JobStatus.Downloading,
+                JobStatus.Processing,
+                JobStatus.Paused
+            };
+            return await _repository.GetJobsByStatusAsync(activeStatuses, limit);
+        }
+
+        public async Task<IEnumerable<DownloadJob>> GetCompletedHistoryJobsAsync(int limit = 100)
+        {
+            var historyStatuses = new[]
+            {
+                JobStatus.Completed,
+                JobStatus.Failed,
+                JobStatus.Cancelled
+            };
+            return await _repository.GetJobsByStatusAsync(historyStatuses, limit);
+        }
+
+        public async Task<DownloadJob?> GetJobAsync(Guid id)
+        {
+            return await _repository.GetJobAsync(id);
+        }
+
         public async Task RetryJobAsync(Guid jobId)
         {
              var job = await _repository.GetJobAsync(jobId);
@@ -73,7 +115,6 @@ namespace Start.App.Services
         {
             await _queueManager.CancelJob(jobId);
             
-            // Also update DB state if not active
             var job = await _repository.GetJobAsync(jobId);
             if(job != null && job.Status != JobStatus.Completed && job.Status != JobStatus.Failed)
             {
@@ -81,5 +122,40 @@ namespace Start.App.Services
                 await _repository.UpdateJobAsync(job);
             }
         }
+
+        public async Task PauseJobAsync(Guid jobId) => await _queueManager.PauseJob(jobId);
+        public async Task ResumeJobAsync(Guid jobId) => await _queueManager.ResumeJob(jobId);
+        public async Task PauseAllJobsAsync() => await _queueManager.PauseAll();
+        public async Task ResumeAllJobsAsync() => await _queueManager.ResumeAll();
+
+        private IExtractorEngine ResolveExtractor(string url)
+        {
+            // DramaBox URL detection
+            if (url.Contains("dramabox.com", StringComparison.OrdinalIgnoreCase) ||
+                url.Contains("dramabox", StringComparison.OrdinalIgnoreCase))
+            {
+                var dramaBoxExtractor = _extractors
+                    .FirstOrDefault(e => e.GetType().Name.Contains("DramaBox", StringComparison.OrdinalIgnoreCase));
+                if (dramaBoxExtractor != null) return dramaBoxExtractor;
+            }
+
+            if (url.Contains("iflix.com", StringComparison.OrdinalIgnoreCase))
+            {
+                var iflixExtractor = _extractors
+                    .FirstOrDefault(e => e.GetType().Name.Contains("Iflix", StringComparison.OrdinalIgnoreCase));
+                if (iflixExtractor != null) return iflixExtractor;
+            }
+
+            if (url.Contains("kisskh.co", StringComparison.OrdinalIgnoreCase))
+            {
+                var kissKhExtractor = _extractors
+                    .FirstOrDefault(e => e.GetType().Name.Contains("KissKh", StringComparison.OrdinalIgnoreCase));
+                if (kissKhExtractor != null) return kissKhExtractor;
+            }
+
+            // Default: use the first extractor (yt-dlp) for everything else
+            return _extractors.First();
+        }
     }
 }
+

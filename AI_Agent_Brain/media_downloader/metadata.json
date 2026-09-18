@@ -1,0 +1,7 @@
+{
+  "title": "Universal Media Downloader (Clean Architecture)",
+  "summary": "Professional C# .NET 8 application for high-speed media downloading. Implements Clean Architecture with a decoupled provider system for supporting multiple video platforms and automated file joining.",
+  "projects": ["video_tool"],
+  "tags": ["csharp-12", "dotnet-8", "clean-architecture", "media-downloader", "onion-architecture", "video-processing"],
+  "last_updated": "2026-04-07T15:55:00Z"
+}

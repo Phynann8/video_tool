@@ -1,130 +1,369 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Input;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Win32;
 using Start.App.Services;
 using Start.Core.Models;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace Start.UI.ViewModels
 {
+    public partial class PlatformItem : ObservableObject
+    {
+        [ObservableProperty] private string _name = string.Empty;
+        [ObservableProperty] private string _iconColor = "#ff0048";
+        [ObservableProperty] private bool _isSelected;
+    }
+
+    public partial class LogMessage : ObservableObject
+    {
+        [ObservableProperty] private string _text = string.Empty;
+        [ObservableProperty] private string _color = "#ffffff";
+    }
+
     public partial class AddDownloadViewModel : ObservableObject
     {
         private readonly IDownloadService _downloadService;
+        private readonly DispatcherTimer _downloadRefreshTimer;
+        private readonly HashSet<Guid> _visibleDownloadIds = new();
 
-        [ObservableProperty]
-        private string _url = string.Empty;
+        public event EventHandler? NavigateToQueueRequested;
+        public event EventHandler? NavigateToHistoryRequested;
+        public event EventHandler? NavigateToSettingsRequested;
 
-        [ObservableProperty]
-        private bool _isBusy;
+        [RelayCommand]
+        public void NavigateToQueue() => NavigateToQueueRequested?.Invoke(this, EventArgs.Empty);
 
-        [ObservableProperty]
-        private DownloadJob? _analyzedJob;
+        [RelayCommand]
+        public void NavigateToHistory() => NavigateToHistoryRequested?.Invoke(this, EventArgs.Empty);
 
-        [ObservableProperty]
-        private ObservableCollection<VideoStreamInfo> _videoStreams = new();
+        [RelayCommand]
+        public void NavigateToSettings() => NavigateToSettingsRequested?.Invoke(this, EventArgs.Empty);
 
-        [ObservableProperty]
-        private ObservableCollection<AudioStreamInfo> _audioStreams = new();
+        [ObservableProperty] private string _url = string.Empty;
+        [ObservableProperty] private bool _isBusy;
+        [ObservableProperty] private string _errorMessage = string.Empty;
+        
+        // Custom UI states
+        [ObservableProperty] private bool _showsTrending = true;
+        [ObservableProperty] private string _currentDramaTitle = "No drama loaded";
+        [ObservableProperty] private string _currentPosterUrl = string.Empty;
+        [ObservableProperty] private int _totalEpisodes = 0;
+        
+        private int _selectedCount = 0;
+        public int SelectedCount
+        {
+            get => _selectedCount;
+            set => SetProperty(ref _selectedCount, value);
+        }
 
-        [ObservableProperty]
-        private VideoStreamInfo? _selectedVideoStream;
-
-        [ObservableProperty]
-        private AudioStreamInfo? _selectedAudioStream;
-
-        [ObservableProperty]
-        private bool _isAudioOnly;
-
-        [ObservableProperty]
-        private string _errorMessage = string.Empty;
-
-        public event EventHandler? OnDownloadStarted;
+        [ObservableProperty] private string _savePath = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
+        
+        // Quality selection (populated after fetch)
+        [ObservableProperty] private ObservableCollection<string> _availableQualities = new();
+        [ObservableProperty] private string _selectedQuality = string.Empty;
+        
+        // Extracted items
+        [ObservableProperty] private ObservableCollection<DownloadJob> _episodes = new();
+        [ObservableProperty] private ObservableCollection<DownloadJob> _downloadJobs = new();
+        [ObservableProperty] private ObservableCollection<LogMessage> _logs = new();
+        [ObservableProperty] private ObservableCollection<PlatformItem> _platforms = new();
+        [ObservableProperty] private bool _hasDownloadJobs;
+        
+        [ObservableProperty] private PlatformItem? _selectedPlatform;
 
         public AddDownloadViewModel(IDownloadService downloadService)
         {
             _downloadService = downloadService;
+
+            var platformNames = new[] { "DramaBox", "NetShort", "Iflix", "KissKH", "FlickReels", "ShortMax", "DramaWave", 
+                                        "StardustTV", "GoodShort", "ReelShort", "BiliTV", "iDrama", 
+                                        "Melolo", "DotDrama", "Reelife", "Velolo", 
+                                        "YouTube", "Facebook", "Instagram", "TikTok", "Bilibili", "X(Twitter)" };
+
+            foreach (var p in platformNames)
+            {
+                Platforms.Add(new PlatformItem { Name = p, IsSelected = p == "DramaBox" });
+            }
+            SelectedPlatform = Platforms.First();
+            _downloadRefreshTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _downloadRefreshTimer.Tick += async (_, _) => await LoadVisibleDownloadJobsAsync();
+            _downloadRefreshTimer.Start();
+
+            LogMsg("OK: runtime config ready.");
+            LogMsg("Waiting for input...");
+        }
+
+        partial void OnSelectedPlatformChanged(PlatformItem? value)
+        {
+            if (value == null) return;
+            foreach (var p in Platforms) p.IsSelected = false;
+            value.IsSelected = true;
+            
+            Url = string.Empty;
+            ShowsTrending = true;
+            CurrentDramaTitle = "No drama loaded";
+            CurrentPosterUrl = string.Empty;
+            Episodes.Clear();
+            UpdateSelectedCount();
+            
+            LogMsg($"Switched to platform: {value.Name}", "#00cec9");
         }
 
         [RelayCommand]
-        private async Task AnalyzeUrl()
+        private async Task FetchUrl()
         {
-            if (string.IsNullOrWhiteSpace(Url)) return;
+            if (string.IsNullOrWhiteSpace(Url))
+            {
+                LogMsg("Paste a drama URL or book ID before searching.", "#f39c12");
+                return;
+            }
 
             IsBusy = true;
             ErrorMessage = string.Empty;
-            AnalyzedJob = null;
+            Episodes.Clear();
+            AvailableQualities.Clear();
+            SelectedQuality = string.Empty;
+            ShowsTrending = false;
+            LogMsg($"Fetching drama page: {Url}");
 
             try
             {
-                var analyzedJob = await _downloadService.AnalyzeUrlAsync(Url);
-
-                if (analyzedJob.Status == JobStatus.AnalysisFailed)
+                var jobs = await _downloadService.AnalyzeUrlAsync(Url);
+                if (jobs == null || !jobs.Any())
                 {
-                    ErrorMessage = string.IsNullOrWhiteSpace(analyzedJob.ErrorMessage)
-                        ? "Failed to analyze the provided URL."
-                        : analyzedJob.ErrorMessage;
+                    LogMsg("Failed to analyze: No data returned from server.", "#ff7675");
                     return;
                 }
 
-                AnalyzedJob = analyzedJob;
-                VideoStreams = new ObservableCollection<VideoStreamInfo>(analyzedJob.AvailableVideoStreams);
-                AudioStreams = new ObservableCollection<AudioStreamInfo>(analyzedJob.AvailableAudioStreams);
-                SelectedVideoStream = VideoStreams.FirstOrDefault();
-                SelectedAudioStream = AudioStreams.FirstOrDefault();
-                IsAudioOnly = false;
+                var firstJob = jobs.First();
+                if (firstJob.Status == JobStatus.AnalysisFailed)
+                {
+                    LogMsg($"Failed to analyze: {firstJob.ErrorMessage}", "#ff7675");
+                    return;
+                }
+
+                CurrentDramaTitle = firstJob.Title.Split('-').FirstOrDefault()?.Trim() ?? "Drama";
+                CurrentPosterUrl = firstJob.ThumbnailUrl;
+                TotalEpisodes = jobs.Count;
+
+                var distinctResolutions = firstJob.AvailableVideoStreams
+                    .Select(s => s.Resolution)
+                    .Distinct()
+                    .ToList();
+
+                foreach (var res in distinctResolutions)
+                {
+                    AvailableQualities.Add(res);
+                }
+                
+                if (AvailableQualities.Any())
+                    SelectedQuality = AvailableQualities.First();
+
+                foreach (var job in jobs)
+                {
+                    Episodes.Add(job);
+                }
+                
+                LogMsg($"Found {TotalEpisodes} episodes. Available qualities: {string.Join(", ", AvailableQualities)}", "#fdcb6e");
+                LogMsg($"OK: {CurrentDramaTitle} | {TotalEpisodes} episode(s)", "#00b894");
             }
             catch (Exception ex)
             {
-                ErrorMessage = ex.Message;
+                LogMsg($"Error: {ex.Message}", "#ff7675");
             }
             finally
             {
+                UpdateSelectedCount();
                 IsBusy = false;
             }
         }
 
         [RelayCommand]
-        private async Task StartDownload()
+        private void BackToTrending()
         {
-            if (AnalyzedJob == null) return;
-            if (AnalyzedJob.Status == JobStatus.AnalysisFailed) return;
+            ShowsTrending = true;
+            Episodes.Clear();
+            CurrentDramaTitle = "No drama loaded";
+            CurrentPosterUrl = string.Empty;
+            TotalEpisodes = 0;
+            UpdateSelectedCount();
+        }
 
+        [RelayCommand]
+        private void SelectAllNodes()
+        {
+            foreach (var ep in Episodes)
+                ep.IsSelected = true;
+            UpdateSelectedCount();
+        }
+
+        [RelayCommand]
+        private void SelectNoneNodes()
+        {
+            foreach (var ep in Episodes)
+                ep.IsSelected = false;
+            UpdateSelectedCount();
+        }
+
+        [RelayCommand]
+        private void ToggleEpisodeSelection(DownloadJob job)
+        {
+            if (job != null)
+            {
+                job.IsSelected = !job.IsSelected;
+                UpdateSelectedCount();
+            }
+        }
+
+        [RelayCommand]
+        private async Task CancelDownload(DownloadJob job)
+        {
+            if (job == null) return;
             try
             {
-                var videoStream = IsAudioOnly
-                    ? null
-                    : SelectedVideoStream ?? AnalyzedJob.SelectedVideoStream ?? VideoStreams.FirstOrDefault();
-
-                var audioStream = SelectedAudioStream ?? AnalyzedJob.SelectedAudioStream ?? AudioStreams.FirstOrDefault();
-
-                if (IsAudioOnly && audioStream == null)
-                {
-                    throw new InvalidOperationException("No audio stream is available for this media.");
-                }
-
-                var savePath = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos); 
-
-                AnalyzedJob.SelectedVideoStream = videoStream;
-                AnalyzedJob.SelectedAudioStream = audioStream;
-                AnalyzedJob.IsAudioOnly = IsAudioOnly;
-
-                await _downloadService.StartDownloadAsync(AnalyzedJob.Id, videoStream, audioStream, savePath);
-                
-                Url = string.Empty;
-                AnalyzedJob = null;
-                VideoStreams.Clear();
-                AudioStreams.Clear();
-                SelectedVideoStream = null;
-                SelectedAudioStream = null;
-                IsAudioOnly = false;
-                
-                OnDownloadStarted?.Invoke(this, EventArgs.Empty);
+                await _downloadService.CancelJobAsync(job.Id);
+                LogMsg($"Cancelled: {job.Title}", "#f39c12");
             }
             catch (Exception ex)
             {
-                ErrorMessage = ex.Message;
+                LogMsg($"Cancel error: {ex.Message}", "#ff7675");
+            }
+        }
+
+        private void UpdateSelectedCount()
+        {
+            SelectedCount = Episodes.Count(e => e.IsSelected);
+        }
+
+        private async Task LoadVisibleDownloadJobsAsync()
+        {
+            if (_visibleDownloadIds.Count == 0)
+            {
+                HasDownloadJobs = DownloadJobs.Count > 0;
+                return;
+            }
+
+            var visibleJobs = (await _downloadService.GetHistoryAsync())
+                .Where(job => _visibleDownloadIds.Contains(job.Id))
+                .OrderByDescending(job => job.CreatedAt)
+                .ToList();
+
+            App.Current.Dispatcher.Invoke(() =>
+            {
+                DownloadJobs.Clear();
+                foreach (var job in visibleJobs)
+                {
+                    DownloadJobs.Add(job);
+                }
+                HasDownloadJobs = DownloadJobs.Count > 0;
+            });
+        }
+
+        [RelayCommand]
+        private void ClearLogs()
+        {
+            Logs.Clear();
+        }
+
+        [RelayCommand]
+        private void BrowseFolder()
+        {
+            var dialog = new OpenFolderDialog
+            {
+                Title = "Select download folder",
+                InitialDirectory = Directory.Exists(SavePath)
+                    ? SavePath
+                    : Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)
+            };
+
+            if (dialog.ShowDialog() == true && Directory.Exists(dialog.FolderName))
+            {
+                SavePath = dialog.FolderName;
+                LogMsg($"Download folder set to: {SavePath}", "#00cec9");
+            }
+        }
+
+        private void LogMsg(string msg, string color = "#ffffff")
+        {
+            App.Current.Dispatcher.Invoke(() =>
+            {
+                Logs.Add(new LogMessage { Text = msg, Color = color });
+            });
+        }
+
+        [RelayCommand]
+        private async Task StartDownload()
+        {
+            if (!Episodes.Any(e => e.IsSelected))
+            {
+                LogMsg("No episodes selected to download.", "#f39c12");
+                return;
+            }
+
+            IsBusy = true;
+            try
+            {
+                var selectedJobs = Episodes
+                    .Where(e => e.IsSelected && e.Status != JobStatus.AnalysisFailed)
+                    .ToList();
+
+                LogMsg($"Queuing {selectedJobs.Count} episode(s) for download...", "#d946ef");
+
+                foreach (var job in selectedJobs)
+                {
+                    VideoStreamInfo? videoStream = null;
+                    if (!string.IsNullOrEmpty(SelectedQuality))
+                    {
+                        videoStream = job.AvailableVideoStreams
+                            .FirstOrDefault(s => s.Resolution == SelectedQuality)
+                            ?? job.AvailableVideoStreams.FirstOrDefault();
+                    }
+                    else
+                    {
+                        videoStream = job.AvailableVideoStreams.FirstOrDefault();
+                    }
+
+                    AudioStreamInfo? audioStream = job.AvailableAudioStreams.FirstOrDefault();
+
+                    string baseSavePath = !string.IsNullOrWhiteSpace(SavePath)
+                        ? SavePath
+                        : Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
+
+                    var dramaFolder = string.Join("_", CurrentDramaTitle.Split(Path.GetInvalidFileNameChars())).Trim();
+                    string effectiveSavePath = Path.Combine(baseSavePath, dramaFolder);
+
+                    var downloadPath = effectiveSavePath;
+                    if (!string.IsNullOrWhiteSpace(job.SavePath) && !Path.IsPathRooted(job.SavePath))
+                    {
+                        downloadPath = Path.Combine(effectiveSavePath, job.SavePath);
+                    }
+
+                    _visibleDownloadIds.Add(job.Id);
+                    await _downloadService.StartDownloadAsync(job.Id, videoStream, audioStream, downloadPath);
+                }
+
+                LogMsg($"{selectedJobs.Count} job(s) added to queue.", "#00b894");
+                await LoadVisibleDownloadJobsAsync();
+                Url = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                LogMsg($"Download Error: {ex.Message}", "#ff7675");
+            }
+            finally
+            {
+                IsBusy = false;
             }
         }
     }

@@ -17,24 +17,6 @@
         FontFamily="{DynamicResource MaterialDesignFont}">
     
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="200"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-
-        <!-- Sidebar -->
-        <Border Grid.Column="0" Background="{DynamicResource MaterialDesignCardBackground}" BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="0,0,1,0">
-            <StackPanel Margin="10">
-                <TextBlock Text="DOWNLOADER" FontWeight="Bold" FontSize="16" Margin="10,20,10,30" HorizontalAlignment="Center"/>
-                
-                <Button Style="{StaticResource MaterialDesignFlatButton}" Content="Add Download" Command="{Binding NavigateToAddDownloadCommand}" HorizontalAlignment="Stretch" Margin="0,5"/>
-                <Button Style="{StaticResource MaterialDesignFlatButton}" Content="Queue" Command="{Binding NavigateToQueueCommand}" HorizontalAlignment="Stretch" Margin="0,5"/>
-                <Button Style="{StaticResource MaterialDesignFlatButton}" Content="History" Command="{Binding NavigateToHistoryCommand}" HorizontalAlignment="Stretch" Margin="0,5"/>
-                <Button Style="{StaticResource MaterialDesignFlatButton}" Content="Settings" Command="{Binding NavigateToSettingsCommand}" HorizontalAlignment="Stretch" Margin="0,5"/>
-            </StackPanel>
-        </Border>
-
-        <!-- Content Area -->
-        <ContentControl Grid.Column="1" Content="{Binding CurrentView}"/>
+        <ContentControl Content="{Binding CurrentView}"/>
     </Grid>
 </Window>

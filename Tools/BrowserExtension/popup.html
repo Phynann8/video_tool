@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 280px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #1e1e24;
+      color: #f1f1f1;
+    }
+    h3 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: 15px;
+      color: #64b5f6;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    p {
+      font-size: 12px;
+      color: #aaaaaa;
+      margin-bottom: 14px;
+      line-height: 1.4;
+    }
+    button {
+      width: 100%;
+      background: #2196f3;
+      border: none;
+      color: white;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #1976d2;
+    }
+    #status {
+      margin-top: 10px;
+      font-size: 12px;
+      text-align: center;
+    }
+    .status-ok { color: #81c784; }
+    .status-err { color: #e57373; }
+  </style>
+</head>
+<body>
+  <h3>Universal Media Downloader</h3>
+  <p>Send the active page or media stream and cookies directly to the desktop application.</p>
+  <button id="downloadBtn">Download This Page</button>
+  <div id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

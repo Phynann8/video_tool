@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Universal Media Downloader Integration",
+  "version": "1.0.0",
+  "description": "Intercepts links, video streams, and session cookies, sending them directly to Universal Media Downloader.",
+  "permissions": [
+    "contextMenus",
+    "nativeMessaging",
+    "cookies",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Universal Media Downloader",
+    "default_popup": "popup.html"
+  }
+}
