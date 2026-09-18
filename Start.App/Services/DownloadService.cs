@@ -17,7 +17,10 @@ namespace Start.App.Services
         Task<IEnumerable<DownloadJob>> GetCompletedHistoryJobsAsync(int limit = 100);
         Task<DownloadJob?> GetJobAsync(Guid id);
         Task RetryJobAsync(Guid jobId);
+        Task RetryAllJobsAsync();
         Task CancelJobAsync(Guid jobId);
+        Task DeleteJobAsync(Guid jobId);
+        Task DeleteAllQueueJobsAsync();
         Task PauseJobAsync(Guid jobId);
         Task ResumeJobAsync(Guid jobId);
         Task PauseAllJobsAsync();
@@ -111,6 +114,20 @@ namespace Start.App.Services
              }
         }
 
+        public async Task RetryAllJobsAsync()
+        {
+            var allJobs = await _repository.GetAllJobsAsync();
+            var retriable = allJobs.Where(j => 
+                j.Status == JobStatus.Failed || 
+                j.Status == JobStatus.Cancelled || 
+                j.Status == JobStatus.Paused).ToList();
+
+            foreach (var job in retriable)
+            {
+                await StartDownloadAsync(job.Id, job.SelectedVideoStream, job.SelectedAudioStream, job.SavePath);
+            }
+        }
+
         public async Task CancelJobAsync(Guid jobId)
         {
             await _queueManager.CancelJob(jobId);
@@ -121,6 +138,28 @@ namespace Start.App.Services
                 job.Status = JobStatus.Cancelled;
                 await _repository.UpdateJobAsync(job);
             }
+        }
+
+        public async Task DeleteJobAsync(Guid jobId)
+        {
+            await _queueManager.CancelJob(jobId);
+            await _repository.DeleteJobAsync(jobId);
+        }
+
+        public async Task DeleteAllQueueJobsAsync()
+        {
+            await _queueManager.CancelAll();
+            var allJobs = await _repository.GetAllJobsAsync();
+            var queueJobs = allJobs.Where(j => 
+                j.Status == JobStatus.Queued || 
+                j.Status == JobStatus.Downloading || 
+                j.Status == JobStatus.Processing || 
+                j.Status == JobStatus.PendingAnalysis || 
+                j.Status == JobStatus.Paused ||
+                j.Status == JobStatus.Cancelled ||
+                j.Status == JobStatus.Failed).Select(j => j.Id).ToList();
+
+            await _repository.DeleteJobsAsync(queueJobs);
         }
 
         public async Task PauseJobAsync(Guid jobId) => await _queueManager.PauseJob(jobId);

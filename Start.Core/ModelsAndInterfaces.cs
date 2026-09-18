@@ -37,11 +37,41 @@ namespace Start.Core.Models
         public string Title { get; set; } = string.Empty;
         public string ThumbnailUrl { get; set; } = string.Empty;
         public TimeSpan Duration { get; set; }
-        public JobStatus Status { get; set; } = JobStatus.PendingAnalysis;
-        public double Progress { get; set; }
-        public string Speed { get; set; } = string.Empty;
-        public string Eta { get; set; } = string.Empty;
-        public string ErrorMessage { get; set; } = string.Empty;
+
+        private JobStatus _status = JobStatus.PendingAnalysis;
+        public JobStatus Status
+        {
+            get => _status;
+            set { if (_status != value) { _status = value; OnPropertyChanged(); } }
+        }
+
+        private double _progress;
+        public double Progress
+        {
+            get => _progress;
+            set { if (Math.Abs(_progress - value) > 0.001) { _progress = value; OnPropertyChanged(); } }
+        }
+
+        private string _speed = string.Empty;
+        public string Speed
+        {
+            get => _speed;
+            set { if (_speed != value) { _speed = value; OnPropertyChanged(); } }
+        }
+
+        private string _eta = string.Empty;
+        public string Eta
+        {
+            get => _eta;
+            set { if (_eta != value) { _eta = value; OnPropertyChanged(); } }
+        }
+
+        private string _errorMessage = string.Empty;
+        public string ErrorMessage
+        {
+            get => _errorMessage;
+            set { if (_errorMessage != value) { _errorMessage = value; OnPropertyChanged(); } }
+        }
         public string SourcePlatform { get; set; } = string.Empty;
         public string SavePath { get; set; } = string.Empty;
         public string DownloadMetadata { get; set; } = string.Empty;
@@ -164,6 +194,8 @@ namespace Start.Core.Interfaces
                         System.Linq.Enumerable.Where(t.Result, j => System.Linq.Enumerable.Contains(statuses, j.Status)), 
                         limit)));
         }
+        Task DeleteJobAsync(Guid id) => Task.CompletedTask;
+        Task DeleteJobsAsync(IEnumerable<Guid> ids) => Task.CompletedTask;
     }
 
     public interface ISettingsRepository

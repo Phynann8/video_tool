@@ -9,70 +9,264 @@
              mc:Ignorable="d" 
              Background="#0f1b2d" Foreground="White"
              materialDesign:ThemeAssist.Theme="Dark"
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="600" d:DesignWidth="950">
     
+    <UserControl.Resources>
+        <!-- Action button style for queue item cards -->
+        <Style x:Key="QueueActionIconButton" TargetType="Button">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Margin" Value="3,0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.82"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.65"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Header toolbar button style -->
+        <Style x:Key="QueueToolbarButton" TargetType="Button">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.7"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
-        <DockPanel Margin="0,0,0,15">
-            <Button Command="{Binding BackCommand}"
-                    Content="Back to Downloader"
-                    DockPanel.Dock="Right"
-                    Background="#222538" Foreground="#00cec9" BorderThickness="0" 
-                    Padding="12,5" FontWeight="SemiBold" Cursor="Hand"/>
-            <TextBlock Text="Downloads Queue" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="White"/>
+        <!-- TOP TOOLBAR & HEADER -->
+        <DockPanel Margin="0,0,0,18">
+            <!-- Left Header: Title + Live Summary Chip -->
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <materialDesign:PackIcon Kind="DownloadMultiple" Width="26" Height="26" Foreground="#00cec9" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock Text="Downloads Queue" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                <Border Margin="14,0,0,0" Padding="10,4" CornerRadius="12" Background="#1a2538" BorderBrush="#2c3c58" BorderThickness="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding SummaryText}" FontSize="12" FontWeight="SemiBold" Foreground="#00cec9"/>
+                </Border>
+            </StackPanel>
+
+            <!-- Right Toolbar: Pause All / Resume All, Retry All, Delete All, Back -->
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <!-- PAUSE ALL / RESUME ALL -->
+                <Button Command="{Binding TogglePauseAllCommand}"
+                        Style="{StaticResource QueueToolbarButton}"
+                        Background="#26344d" BorderBrush="#3d4f70"
+                        ToolTip="Pause or resume all active downloads">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="{Binding PauseAllIconKind}" Width="16" Height="16" Foreground="#fdcb6e" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="{Binding PauseAllButtonText}" FontSize="12" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- RETRY ALL -->
+                <Button Command="{Binding RetryAllCommand}"
+                        Style="{StaticResource QueueToolbarButton}"
+                        Background="#133832" BorderBrush="#1e544a"
+                        ToolTip="Retry all failed, paused, or cancelled downloads in queue">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16" Foreground="#00b894" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="Retry All" FontSize="12" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- DELETE ALL -->
+                <Button Command="{Binding DeleteAllCommand}"
+                        Style="{StaticResource QueueToolbarButton}"
+                        Background="#3b1c25" BorderBrush="#5e2836"
+                        ToolTip="Cancel and clear all downloads in queue">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="DeleteSweep" Width="16" Height="16" Foreground="#ff7675" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="Delete All" FontSize="12" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- BACK TO DOWNLOADER -->
+                <Button Command="{Binding BackCommand}"
+                        Style="{StaticResource QueueToolbarButton}"
+                        Background="#1b2234" BorderBrush="#2d3750"
+                        Margin="4,0,0,0"
+                        ToolTip="Return to link downloader">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="ArrowLeft" Width="16" Height="16" Foreground="#00cec9" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="Back to Downloader" FontSize="12" FontWeight="SemiBold" Foreground="#00cec9" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
         </DockPanel>
+
+        <!-- EMPTY STATE (Visible when queue has no jobs) -->
+        <Border Grid.Row="1"
+                Visibility="{Binding HasJobs, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                Background="#131e31" BorderBrush="#22324e" BorderThickness="1" CornerRadius="12"
+                Padding="40,50" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520">
+            <StackPanel HorizontalAlignment="Center">
+                <Border Width="72" Height="72" CornerRadius="36" Background="#1b2a44" HorizontalAlignment="Center" Margin="0,0,0,18">
+                    <materialDesign:PackIcon Kind="TrayRemove" Width="36" Height="36" Foreground="#74b9ff" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="No Active Downloads" FontSize="20" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                <TextBlock Text="Your download queue is currently empty. Add drama or video links to start downloading episodes." 
+                           FontSize="13" Foreground="#8fa3bf" TextWrapping="Wrap" TextAlignment="Center" LineHeight="20" Margin="0,0,0,24"/>
+                <Button Command="{Binding BackCommand}" 
+                        Background="#00cec9" Foreground="#0f1b2d" BorderThickness="0" 
+                        Padding="20,10" Height="40" FontWeight="Bold" Cursor="Hand" HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="PlusCircleOutline" Width="18" Height="18" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Add New Download" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Border>
         
-        <ScrollViewer Grid.Row="1">
+        <!-- QUEUE LIST (Visible when queue has items) -->
+        <ScrollViewer Grid.Row="1" 
+                      Visibility="{Binding HasJobs, Converter={StaticResource BooleanToVisibilityConverter}}"
+                      VerticalScrollBarVisibility="Auto">
             <ItemsControl ItemsSource="{Binding Jobs}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <materialDesign:Card Margin="0,0,0,10" Padding="10">
+                        <materialDesign:Card Margin="0,0,0,12" Padding="12" Background="#152136" UniformCornerRadius="8" BorderBrush="#24334f" BorderThickness="1">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="96"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 
-                                <Image Source="{Binding ThumbnailUrl}" Stretch="UniformToFill" Height="60"/>
+                                <!-- Thumbnail with Placeholder fallback -->
+                                <Border Grid.Column="0" Width="96" Height="66" CornerRadius="6" Background="#0b1320" ClipToBounds="True">
+                                    <Grid>
+                                        <materialDesign:PackIcon Kind="MoviePlayOutline" Width="32" Height="32" Foreground="#2d3f5e" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <Image Source="{Binding ThumbnailUrl}" Stretch="UniformToFill"/>
+                                    </Grid>
+                                </Border>
                                 
-                                <StackPanel Grid.Column="1" Margin="10,0">
-                                    <TextBlock Text="{Binding Title}" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding Url}" FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
-                                    
-                                    <Grid Margin="0,5,0,0">
+                                <!-- Episode Details & Progress -->
+                                <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center">
+                                    <!-- Title & Progress Percent -->
+                                    <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding Status}" FontWeight="SemiBold" Margin="0,0,10,0"/>
-                                        <ProgressBar Value="{Binding Progress}" Maximum="100" Height="10" VerticalAlignment="Center" Grid.Column="1"/>
-                                        <TextBlock Text="{Binding Progress, StringFormat={}{0:0}%}" Margin="10,0,0,0" Grid.Column="2"/>
+                                        <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Bold" Foreground="White" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Progress, StringFormat={}{0:0.#}%}" FontWeight="Bold" FontSize="14" Foreground="#00cec9" Margin="10,0,0,0"/>
                                     </Grid>
                                     
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding Speed}" FontSize="11" Margin="0,0,10,0"/>
-                                        <TextBlock Text="{Binding Eta}" FontSize="11"/>
-                                    </StackPanel>
+                                    <!-- URL -->
+                                    <TextBlock Text="{Binding Url}" FontSize="11" Foreground="#798ba3" TextTrimming="CharacterEllipsis" Margin="0,2,0,8"/>
+                                    
+                                    <!-- Progress Bar -->
+                                    <ProgressBar Value="{Binding Progress}" Maximum="100" Height="8" Foreground="#00cec9" Background="#24324a" Margin="0,0,0,8"/>
+                                    
+                                    <!-- Status Badge, Speed, ETA, Error -->
+                                    <DockPanel LastChildFill="True">
+                                        <!-- Status Badge -->
+                                        <Border DockPanel.Dock="Left" CornerRadius="4" Padding="8,2" Margin="0,0,12,0" VerticalAlignment="Center"
+                                                Background="{Binding Status, Converter={StaticResource StatusToBadgeBgBrushConverter}}"
+                                                BorderBrush="{Binding Status, Converter={StaticResource StatusToColorBrushConverter}}"
+                                                BorderThickness="1">
+                                            <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="Bold"
+                                                       Foreground="{Binding Status, Converter={StaticResource StatusToColorBrushConverter}}"/>
+                                        </Border>
+                                        
+                                        <!-- Speed & ETA -->
+                                        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Speed}" FontSize="11" Foreground="#a6b8ce" Margin="0,0,12,0"/>
+                                            <TextBlock Text="{Binding Eta}" FontSize="11" Foreground="#a6b8ce"/>
+                                        </StackPanel>
+
+                                        <!-- Error message if any -->
+                                        <TextBlock Text="{Binding ErrorMessage}" FontSize="11" Foreground="#ff7675" 
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" 
+                                                   HorizontalAlignment="Right" Margin="10,0,0,0" 
+                                                   ToolTip="{Binding ErrorMessage}"/>
+                                    </DockPanel>
                                 </StackPanel>
                                 
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                    <Button Command="{Binding DataContext.CancelJobCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+                                <!-- Card Actions: Pause / Resume, Retry, Delete -->
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0">
+                                    <!-- PAUSE ITEM (Visible when downloading / queued) -->
+                                    <Button Command="{Binding DataContext.PauseJobCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
                                             CommandParameter="{Binding}"
-                                            Style="{StaticResource MaterialDesignIconButton}" 
-                                            ToolTip="Cancel">
-                                        <materialDesign:PackIcon Kind="Close"/>
+                                            Visibility="{Binding Status, Converter={StaticResource StatusToPauseVisibilityConverter}}"
+                                            Style="{StaticResource QueueActionIconButton}"
+                                            Background="#25324a" BorderBrush="#3a4c6e"
+                                            ToolTip="Pause download">
+                                        <materialDesign:PackIcon Kind="Pause" Width="16" Height="16" Foreground="#fdcb6e"/>
                                     </Button>
+
+                                    <!-- RESUME ITEM (Visible when paused) -->
+                                    <Button Command="{Binding DataContext.ResumeJobCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+                                            CommandParameter="{Binding}"
+                                            Visibility="{Binding Status, Converter={StaticResource StatusToResumeVisibilityConverter}}"
+                                            Style="{StaticResource QueueActionIconButton}"
+                                            Background="#1a3556" BorderBrush="#2563eb"
+                                            ToolTip="Resume download">
+                                        <materialDesign:PackIcon Kind="Play" Width="16" Height="16" Foreground="#60a5fa"/>
+                                    </Button>
+
+                                    <!-- RETRY ITEM -->
                                     <Button Command="{Binding DataContext.RetryJobCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
                                             CommandParameter="{Binding}"
-                                            Style="{StaticResource MaterialDesignIconButton}" 
-                                            ToolTip="Retry">
-                                        <materialDesign:PackIcon Kind="Refresh"/>
+                                            Style="{StaticResource QueueActionIconButton}"
+                                            Background="#143630" BorderBrush="#1e584d"
+                                            ToolTip="Retry download">
+                                        <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16" Foreground="#00b894"/>
+                                    </Button>
+
+                                    <!-- DELETE ITEM -->
+                                    <Button Command="{Binding DataContext.DeleteJobCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource QueueActionIconButton}"
+                                            Background="#381b23" BorderBrush="#5d2532"
+                                            ToolTip="Delete from queue">
+                                        <materialDesign:PackIcon Kind="Close" Width="16" Height="16" Foreground="#ff7675"/>
                                     </Button>
                                 </StackPanel>
                             </Grid>

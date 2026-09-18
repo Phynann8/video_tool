@@ -118,14 +118,110 @@ namespace Downloader.Tests
             Assert.Equal("Target Job", fetched.Title);
         }
 
+        [Fact]
+        public async Task SqliteDownloadRepository_DeleteJobAsync_RemovesJob()
+        {
+            var bootstrap = new DatabaseBootstrap(_testDbPath);
+            await bootstrap.SetupAsync();
+
+            var repo = new SqliteDownloadRepository(_testDbPath);
+            var jobId = Guid.NewGuid();
+            await repo.AddJobAsync(new DownloadJob { Id = jobId, Title = "Job To Delete", Status = JobStatus.Queued, Url = "uDel" });
+
+            Assert.NotNull(await repo.GetJobAsync(jobId));
+
+            await repo.DeleteJobAsync(jobId);
+            Assert.Null(await repo.GetJobAsync(jobId));
+        }
+
+        [Fact]
+        public async Task SqliteDownloadRepository_DeleteJobsAsync_RemovesBatchJobs()
+        {
+            var bootstrap = new DatabaseBootstrap(_testDbPath);
+            await bootstrap.SetupAsync();
+
+            var repo = new SqliteDownloadRepository(_testDbPath);
+            var id1 = Guid.NewGuid();
+            var id2 = Guid.NewGuid();
+            var id3 = Guid.NewGuid();
+
+            await repo.AddJobAsync(new DownloadJob { Id = id1, Title = "Job 1", Status = JobStatus.Queued, Url = "u1" });
+            await repo.AddJobAsync(new DownloadJob { Id = id2, Title = "Job 2", Status = JobStatus.Queued, Url = "u2" });
+            await repo.AddJobAsync(new DownloadJob { Id = id3, Title = "Job 3 (Keep)", Status = JobStatus.Completed, Url = "u3" });
+
+            await repo.DeleteJobsAsync(new[] { id1, id2 });
+
+            Assert.Null(await repo.GetJobAsync(id1));
+            Assert.Null(await repo.GetJobAsync(id2));
+            Assert.NotNull(await repo.GetJobAsync(id3));
+        }
+
+        [Fact]
+        public async Task DownloadService_DeleteAllQueueJobsAsync_DeletesQueueJobsAndRetainsCompleted()
+        {
+            var bootstrap = new DatabaseBootstrap(_testDbPath);
+            await bootstrap.SetupAsync();
+
+            var repo = new SqliteDownloadRepository(_testDbPath);
+            var activeId = Guid.NewGuid();
+            var completedId = Guid.NewGuid();
+
+            await repo.AddJobAsync(new DownloadJob { Id = activeId, Title = "Active", Status = JobStatus.Downloading, Url = "uActive" });
+            await repo.AddJobAsync(new DownloadJob { Id = completedId, Title = "Completed", Status = JobStatus.Completed, Url = "uComp" });
+
+            var fakeQueue = new FakeQueueManager();
+            var service = new DownloadService(Enumerable.Empty<IExtractorEngine>(), repo, fakeQueue);
+
+            await service.DeleteAllQueueJobsAsync();
+
+            Assert.True(fakeQueue.CancelAllCalled);
+            Assert.Null(await repo.GetJobAsync(activeId));
+            Assert.NotNull(await repo.GetJobAsync(completedId));
+        }
+
+        [Fact]
+        public async Task DownloadService_RetryAllJobsAsync_RetriesFailedAndCancelledJobs()
+        {
+            var bootstrap = new DatabaseBootstrap(_testDbPath);
+            await bootstrap.SetupAsync();
+
+            var repo = new SqliteDownloadRepository(_testDbPath);
+            var failedId = Guid.NewGuid();
+            var cancelledId = Guid.NewGuid();
+            var completedId = Guid.NewGuid();
+
+            await repo.AddJobAsync(new DownloadJob { Id = failedId, Title = "Failed Job", Status = JobStatus.Failed, Url = "uFailed", SavePath = "C:/tmp" });
+            await repo.AddJobAsync(new DownloadJob { Id = cancelledId, Title = "Cancelled Job", Status = JobStatus.Cancelled, Url = "uCancelled", SavePath = "C:/tmp" });
+            await repo.AddJobAsync(new DownloadJob { Id = completedId, Title = "Done Job", Status = JobStatus.Completed, Url = "uDone", SavePath = "C:/tmp" });
+
+            var fakeQueue = new FakeQueueManager();
+            var service = new DownloadService(Enumerable.Empty<IExtractorEngine>(), repo, fakeQueue);
+
+            await service.RetryAllJobsAsync();
+
+            Assert.Equal(2, fakeQueue.EnqueuedJobs.Count);
+            Assert.Contains(fakeQueue.EnqueuedJobs, j => j.Id == failedId);
+            Assert.Contains(fakeQueue.EnqueuedJobs, j => j.Id == cancelledId);
+        }
+
         private class FakeQueueManager : IQueueManager
         {
+#pragma warning disable CS0067
             public event EventHandler<DownloadJob>? JobUpdated;
             public event EventHandler<DownloadJob>? JobCompleted;
             public event EventHandler<DownloadJob>? JobFailed;
-            public int ActiveJobCount => 0;
-            public void Enqueue(DownloadJob job) { }
+#pragma warning restore CS0067
+            public int ActiveJobCount => EnqueuedJobs.Count;
+            public List<DownloadJob> EnqueuedJobs { get; } = new();
+            public bool CancelAllCalled { get; private set; }
+
+            public void Enqueue(DownloadJob job) => EnqueuedJobs.Add(job);
             public Task CancelJob(Guid jobId) => Task.CompletedTask;
+            public Task CancelAll()
+            {
+                CancelAllCalled = true;
+                return Task.CompletedTask;
+            }
             public Task PauseJob(Guid jobId) => Task.CompletedTask;
             public Task ResumeJob(Guid jobId) => Task.CompletedTask;
             public Task PauseAll() => Task.CompletedTask;

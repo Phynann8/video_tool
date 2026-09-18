@@ -91,5 +91,22 @@ namespace Start.Infrastructure.Data
             }
             return jobs;
         }
+
+        public async Task DeleteJobAsync(Guid id)
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            var sql = "DELETE FROM Jobs WHERE Id = @Id";
+            await connection.ExecuteAsync(sql, new { Id = id.ToString() });
+        }
+
+        public async Task DeleteJobsAsync(IEnumerable<Guid> ids)
+        {
+            var idStrings = ids.Select(i => i.ToString()).ToList();
+            if (idStrings.Count == 0) return;
+
+            using var connection = new SqliteConnection(_connectionString);
+            var sql = "DELETE FROM Jobs WHERE Id IN @Ids";
+            await connection.ExecuteAsync(sql, new { Ids = idStrings });
+        }
     }
 }

@@ -14,6 +14,7 @@ namespace Start.App.Services
     {
         void Enqueue(DownloadJob job);
         Task CancelJob(Guid jobId);
+        Task CancelAll();
         Task PauseJob(Guid jobId);
         Task ResumeJob(Guid jobId);
         Task PauseAll();
@@ -226,6 +227,37 @@ namespace Start.App.Services
                 }
             }
             return Task.CompletedTask;
+        }
+
+        public async Task CancelAll()
+        {
+            List<Guid> activeIds;
+            lock (_activeJobs)
+            {
+                activeIds = _activeJobs.Keys.ToList();
+            }
+
+            foreach (var id in activeIds)
+            {
+                await CancelJob(id);
+            }
+
+            var allJobs = await _repository.GetAllJobsAsync();
+            var nonCompletedJobs = allJobs.Where(j => 
+                j.Status == JobStatus.Queued || 
+                j.Status == JobStatus.Downloading || 
+                j.Status == JobStatus.Processing || 
+                j.Status == JobStatus.PendingAnalysis ||
+                j.Status == JobStatus.Paused).ToList();
+
+            foreach (var job in nonCompletedJobs)
+            {
+                job.Status = JobStatus.Cancelled;
+                job.Speed = string.Empty;
+                job.Eta = string.Empty;
+                await _repository.UpdateJobAsync(job);
+                JobUpdated?.Invoke(this, job);
+            }
         }
 
         public Task PauseJob(Guid jobId)
