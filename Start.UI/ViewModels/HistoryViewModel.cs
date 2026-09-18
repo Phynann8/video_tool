@@ -1,6 +1,8 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Start.App.Services;
 using Start.Core.Models;
 using System.Linq;
@@ -10,6 +12,7 @@ namespace Start.UI.ViewModels
     public partial class HistoryViewModel : ObservableObject
     {
         private readonly IDownloadService _downloadService;
+        public event EventHandler? BackRequested;
 
         [ObservableProperty]
         private ObservableCollection<DownloadJob> _jobs = new();
@@ -17,6 +20,12 @@ namespace Start.UI.ViewModels
         public HistoryViewModel(IDownloadService downloadService)
         {
             _downloadService = downloadService;
+        }
+
+        [RelayCommand]
+        private void Back()
+        {
+            BackRequested?.Invoke(this, EventArgs.Empty);
         }
 
         public async Task LoadHistory()

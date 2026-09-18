@@ -7,16 +7,62 @@
         xmlns:local="clr-namespace:Start.UI.Views"
         xmlns:vm="clr-namespace:Start.UI.ViewModels"
         mc:Ignorable="d"
-        Title="Universal Media Downloader" Height="600" Width="900"
+        Title="Universal Media Downloader" Height="720" Width="1120" MinHeight="600" MinWidth="900"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontWeight="Regular"
         TextElement.FontSize="13"
         TextOptions.TextFormattingMode="Ideal"
         TextOptions.TextRenderingMode="Auto"
-        Background="{DynamicResource MaterialDesignPaper}"
+        Background="#0f1b2d"
         FontFamily="{DynamicResource MaterialDesignFont}">
     
-    <Grid>
-        <ContentControl Content="{Binding CurrentView}"/>
+    <Grid Background="#0f1b2d">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top Navigation Bar -->
+        <Border Grid.Row="0" Background="#161626" BorderBrush="#2c4f7c" BorderThickness="0,0,0,1">
+            <Grid Margin="15,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- App Branding -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="▶ " Foreground="#ff0048" FontWeight="Bold" FontSize="18" VerticalAlignment="Center"/>
+                    <TextBlock Text="Universal Media Downloader" FontWeight="Bold" Foreground="#ff522e" FontSize="16" VerticalAlignment="Center"/>
+                    <Border Background="#222538" CornerRadius="4" Padding="6,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="PRO v2.0" Foreground="#00b894" FontWeight="Bold" FontSize="10"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Navigation Tabs -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource MaterialDesignFlatButton}" 
+                            Content="📥 Add Download" 
+                            Command="{Binding NavigateToAddDownloadCommand}" 
+                            Foreground="White" FontWeight="SemiBold" Margin="3,0" Padding="12,6"/>
+                    <Button Style="{StaticResource MaterialDesignFlatButton}" 
+                            Content="📋 Queue" 
+                            Command="{Binding NavigateToQueueCommand}" 
+                            Foreground="#00cec9" FontWeight="SemiBold" Margin="3,0" Padding="12,6"/>
+                    <Button Style="{StaticResource MaterialDesignFlatButton}" 
+                            Content="🕒 History" 
+                            Command="{Binding NavigateToHistoryCommand}" 
+                            Foreground="#a29bfe" FontWeight="SemiBold" Margin="3,0" Padding="12,6"/>
+                    <Button Style="{StaticResource MaterialDesignFlatButton}" 
+                            Content="⚙ Settings" 
+                            Command="{Binding NavigateToSettingsCommand}" 
+                            Foreground="#dfe6e9" FontWeight="SemiBold" Margin="3,0" Padding="12,6"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Content Area -->
+        <ContentControl Grid.Row="1" Content="{Binding CurrentView}"/>
     </Grid>
 </Window>

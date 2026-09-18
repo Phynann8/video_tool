@@ -86,8 +86,15 @@ namespace Start.UI.ViewModels
         public void NavigateToHistory()
         {
             var vm = _serviceProvider.GetRequiredService<HistoryViewModel>();
+            vm.BackRequested -= OnHistoryBackRequested;
+            vm.BackRequested += OnHistoryBackRequested;
             _ = vm.LoadHistory();
             CurrentView = new HistoryView { DataContext = vm };
+        }
+
+        private void OnHistoryBackRequested(object? sender, EventArgs e)
+        {
+            NavigateToAddDownload();
         }
 
         [RelayCommand]

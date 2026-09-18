@@ -7,11 +7,20 @@
              xmlns:local="clr-namespace:Start.UI.Views"
              xmlns:vm="clr-namespace:Start.UI.ViewModels"
              mc:Ignorable="d" 
+             Background="#0f1b2d" Foreground="White"
+             materialDesign:ThemeAssist.Theme="Dark"
              d:DesignHeight="450" d:DesignWidth="800">
     
     <Grid Margin="20">
         <StackPanel>
-            <TextBlock Text="Settings" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Margin="0,0,0,20"/>
+            <DockPanel Margin="0,0,0,20">
+                <Button Command="{Binding BackCommand}"
+                        Content="Back to Downloader"
+                        DockPanel.Dock="Right"
+                        Background="#222538" Foreground="#dfe6e9" BorderThickness="0" 
+                        Padding="12,5" FontWeight="SemiBold" Cursor="Hand"/>
+                <TextBlock Text="Settings" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="White"/>
+            </DockPanel>
             
             <materialDesign:Card Padding="20">
                 <StackPanel>

@@ -7,6 +7,8 @@
              xmlns:local="clr-namespace:Start.UI.Views"
              xmlns:vm="clr-namespace:Start.UI.ViewModels"
              mc:Ignorable="d" 
+             Background="#0f1b2d" Foreground="White"
+             materialDesign:ThemeAssist.Theme="Dark"
              d:DesignHeight="450" d:DesignWidth="800">
     
     <Grid Margin="20">
@@ -15,7 +17,14 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
-        <TextBlock Text="Download History" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Margin="0,0,0,15"/>
+        <DockPanel Margin="0,0,0,15">
+            <Button Command="{Binding BackCommand}"
+                    Content="Back to Downloader"
+                    DockPanel.Dock="Right"
+                    Background="#222538" Foreground="#a29bfe" BorderThickness="0" 
+                    Padding="12,5" FontWeight="SemiBold" Cursor="Hand"/>
+            <TextBlock Text="Download History" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="White"/>
+        </DockPanel>
         
         <ScrollViewer Grid.Row="1">
             <ItemsControl ItemsSource="{Binding Jobs}">

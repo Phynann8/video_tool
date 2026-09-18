@@ -100,6 +100,19 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                 </StackPanel>
+
+                <!-- Top Right Navigation Buttons -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,15,0">
+                    <Button Content="📋 Queue" Command="{Binding NavigateToQueueCommand}" 
+                            Background="#222538" Foreground="#00cec9" BorderThickness="0" 
+                            Padding="12,5" Margin="0,0,8,0" FontSize="12" FontWeight="SemiBold" Cursor="Hand"/>
+                    <Button Content="🕒 History" Command="{Binding NavigateToHistoryCommand}" 
+                            Background="#222538" Foreground="#a29bfe" BorderThickness="0" 
+                            Padding="12,5" Margin="0,0,8,0" FontSize="12" FontWeight="SemiBold" Cursor="Hand"/>
+                    <Button Content="⚙ Settings" Command="{Binding NavigateToSettingsCommand}" 
+                            Background="#222538" Foreground="#b2bec3" BorderThickness="0" 
+                            Padding="10,5" FontSize="12" FontWeight="SemiBold" Cursor="Hand"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -375,8 +388,22 @@
                 </Grid.RowDefinitions>
                 
                 <Grid Margin="0,0,0,5">
-                    <TextBlock Text="Log" Foreground="White" FontWeight="Bold"/>
-                    <Button Content="Clear" Command="{Binding ClearLogsCommand}" Background="Transparent" Foreground="#8888aa" HorizontalAlignment="Right" Padding="0" BorderThickness="0" Height="20"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Console Logs" Foreground="White" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <Border Background="#252538" CornerRadius="3" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Live" Foreground="#00b894" FontSize="10" FontWeight="Bold"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Content="📋 Copy Log" Command="{Binding CopyLogCommand}" 
+                                Background="#252538" Foreground="#00cec9" BorderThickness="0" 
+                                Padding="10,3" Margin="0,0,8,0" Height="24" FontSize="11" FontWeight="SemiBold" Cursor="Hand"
+                                ToolTip="Copy all console log lines to clipboard"/>
+                        <Button Content="Clear" Command="{Binding ClearLogsCommand}" 
+                                Background="Transparent" Foreground="#8888aa" 
+                                Padding="8,3" BorderThickness="0" Height="24" FontSize="11" Cursor="Hand"/>
+                    </StackPanel>
                 </Grid>
                 
                 <ScrollViewer x:Name="LogViewer" Grid.Row="1" VerticalScrollBarVisibility="Auto">

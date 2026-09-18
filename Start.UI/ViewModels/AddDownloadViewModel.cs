@@ -19,6 +19,7 @@ namespace Start.UI.ViewModels
     {
         [ObservableProperty] private string _name = string.Empty;
         [ObservableProperty] private string _iconColor = "#ff0048";
+        [ObservableProperty] private string _defaultUrl = string.Empty;
         [ObservableProperty] private bool _isSelected;
     }
 
@@ -83,16 +84,44 @@ namespace Start.UI.ViewModels
         {
             _downloadService = downloadService;
 
-            var platformNames = new[] { "DramaBox", "NetShort", "Iflix", "KissKH", "FlickReels", "ShortMax", "DramaWave", 
-                                        "StardustTV", "GoodShort", "ReelShort", "BiliTV", "iDrama", 
-                                        "Melolo", "DotDrama", "Reelife", "Velolo", 
-                                        "YouTube", "Facebook", "Instagram", "TikTok", "Bilibili", "X(Twitter)" };
-
-            foreach (var p in platformNames)
+            var defaultPlatforms = new (string Name, string Url, string Color)[]
             {
-                Platforms.Add(new PlatformItem { Name = p, IsSelected = p == "DramaBox" });
+                ("iQiyi", "https://www.iq.com/?lang=en_us", "#00cc4c"),
+                ("DramaBox", "https://www.dramabox.com/", "#ff522e"),
+                ("NetShort", "https://www.netshort.com/", "#0984e3"),
+                ("Iflix", "https://www.iflix.com/", "#f39c12"),
+                ("KissKH", "https://kisskh.co/", "#e84393"),
+                ("YouTube", "https://www.youtube.com/", "#ff0000"),
+                ("TikTok", "https://www.tiktok.com/", "#00cec9"),
+                ("Facebook", "https://www.facebook.com/", "#1877f2"),
+                ("Instagram", "https://www.instagram.com/", "#fd79a8"),
+                ("Bilibili", "https://www.bilibili.com/", "#00a8ff"),
+                ("FlickReels", "", "#ff0048"),
+                ("ShortMax", "", "#ff0048"),
+                ("DramaWave", "", "#ff0048"),
+                ("StardustTV", "", "#ff0048"),
+                ("GoodShort", "", "#ff0048"),
+                ("ReelShort", "", "#ff0048"),
+                ("BiliTV", "", "#ff0048"),
+                ("iDrama", "", "#ff0048"),
+                ("Melolo", "", "#ff0048"),
+                ("DotDrama", "", "#ff0048"),
+                ("Reelife", "", "#ff0048"),
+                ("Velolo", "", "#ff0048"),
+                ("X(Twitter)", "", "#1da1f2")
+            };
+
+            foreach (var p in defaultPlatforms)
+            {
+                Platforms.Add(new PlatformItem 
+                { 
+                    Name = p.Name, 
+                    DefaultUrl = p.Url, 
+                    IconColor = p.Color, 
+                    IsSelected = p.Name == "DramaBox" 
+                });
             }
-            SelectedPlatform = Platforms.First();
+            SelectedPlatform = Platforms.FirstOrDefault(p => p.Name == "DramaBox") ?? Platforms.First();
             _downloadRefreshTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromSeconds(1)
@@ -110,7 +139,7 @@ namespace Start.UI.ViewModels
             foreach (var p in Platforms) p.IsSelected = false;
             value.IsSelected = true;
             
-            Url = string.Empty;
+            Url = !string.IsNullOrEmpty(value.DefaultUrl) ? value.DefaultUrl : string.Empty;
             ShowsTrending = true;
             CurrentDramaTitle = "No drama loaded";
             CurrentPosterUrl = string.Empty;
@@ -274,6 +303,27 @@ namespace Start.UI.ViewModels
         private void ClearLogs()
         {
             Logs.Clear();
+        }
+
+        [RelayCommand]
+        private void CopyLog()
+        {
+            if (Logs == null || Logs.Count == 0)
+            {
+                LogMsg("No logs to copy.", "#f39c12");
+                return;
+            }
+
+            try
+            {
+                var text = string.Join(Environment.NewLine, Logs.Select(l => l.Text));
+                System.Windows.Clipboard.SetText(text);
+                LogMsg("✅ All logs copied to clipboard.", "#00b894");
+            }
+            catch (Exception ex)
+            {
+                LogMsg($"Failed to copy logs: {ex.Message}", "#ff7675");
+            }
         }
 
         [RelayCommand]
