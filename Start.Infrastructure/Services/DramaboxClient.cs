@@ -263,8 +263,8 @@ namespace Start.Infrastructure.Services
             {
                 var batchData = await FetchBatchAsync(bookId, index);
                 
-                var chapters = batchData["data"]?["chapterList"] as JArray
-                    ?? batchData["chapterList"] as JArray;
+                var chapters = batchData?["data"]?["chapterList"] as JArray
+                    ?? batchData?["chapterList"] as JArray;
                 
                 bool isEndOfBook = index + 5 >= totalChapterCount && totalChapterCount != 0;
                 

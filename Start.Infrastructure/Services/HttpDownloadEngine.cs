@@ -155,6 +155,7 @@ namespace Start.Infrastructure.Services
                         return null;
                     })
                     .Where(p => p != null && p.Length > 0)
+                    .Select(p => p!)
                     .OrderBy(p => p.Start)
                     .ToList();
 

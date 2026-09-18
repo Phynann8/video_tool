@@ -61,7 +61,7 @@ namespace Start.Infrastructure.Services
             }
 
             string dramaTitle = data["title"]?.ToString() ?? dramaSlug;
-            string thumbnailUrl = data["thumbnail"]?.ToString();
+            string thumbnailUrl = data["thumbnail"]?.ToString() ?? string.Empty;
 
             // 2. Generate Jobs
             var jobs = new List<DownloadJob>();
