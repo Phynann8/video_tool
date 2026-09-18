@@ -22,6 +22,11 @@ namespace Start.Infrastructure.Data
                 "CREATE TABLE IF NOT EXISTS AppSettings (Id INTEGER PRIMARY KEY, JsonData TEXT NOT NULL);");
         }
 
+        private static readonly JsonSerializerSettings SerializerSettings = new()
+        {
+            ObjectCreationHandling = ObjectCreationHandling.Replace
+        };
+
         public async Task<DownloadProcessingSettings> LoadAsync()
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -30,7 +35,7 @@ namespace Start.Infrastructure.Data
                 "SELECT JsonData FROM AppSettings WHERE Id = 1");
             return string.IsNullOrWhiteSpace(json)
                 ? new DownloadProcessingSettings()
-                : JsonConvert.DeserializeObject<DownloadProcessingSettings>(json)
+                : JsonConvert.DeserializeObject<DownloadProcessingSettings>(json, SerializerSettings)
                     ?? new DownloadProcessingSettings();
         }
 

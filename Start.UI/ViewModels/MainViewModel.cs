@@ -103,6 +103,7 @@ namespace Start.UI.ViewModels
             var vm = _serviceProvider.GetRequiredService<SettingsViewModel>();
             vm.BackRequested -= OnSettingsBackRequested;
             vm.BackRequested += OnSettingsBackRequested;
+            _ = vm.LoadSettingsAsync();
             CurrentView = new SettingsView { DataContext = vm };
         }
 

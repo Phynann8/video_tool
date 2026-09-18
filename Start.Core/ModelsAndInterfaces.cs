@@ -150,12 +150,39 @@ namespace Start.Core.Models
         }
     }
 
-    public class IqiyiAccountCredential
+    public class IqiyiAccountCredential : INotifyPropertyChanged
     {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public string Label { get; set; } = string.Empty;
-        public bool IsActive { get; set; } = true;
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? name = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+        private string _email = string.Empty;
+        public string Email
+        {
+            get => _email;
+            set { if (_email != value) { _email = value; OnPropertyChanged(); } }
+        }
+
+        private string _password = string.Empty;
+        public string Password
+        {
+            get => _password;
+            set { if (_password != value) { _password = value; OnPropertyChanged(); } }
+        }
+
+        private string _label = string.Empty;
+        public string Label
+        {
+            get => _label;
+            set { if (_label != value) { _label = value; OnPropertyChanged(); } }
+        }
+
+        private bool _isActive = true;
+        public bool IsActive
+        {
+            get => _isActive;
+            set { if (_isActive != value) { _isActive = value; OnPropertyChanged(); } }
+        }
     }
 
     public class DownloadProcessingSettings

@@ -6,36 +6,373 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:local="clr-namespace:Start.UI.Views"
              xmlns:vm="clr-namespace:Start.UI.ViewModels"
+             xmlns:converters="clr-namespace:Start.UI.Converters"
              mc:Ignorable="d" 
-             Background="#0f1b2d" Foreground="White"
+             Background="#0b0f19" Foreground="White"
              materialDesign:ThemeAssist.Theme="Dark"
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="850" d:DesignWidth="1100">
     
-    <Grid Margin="20">
-        <StackPanel>
-            <DockPanel Margin="0,0,0,20">
-                <Button Command="{Binding BackCommand}"
-                        Content="Back to Downloader"
-                        DockPanel.Dock="Right"
-                        Background="#222538" Foreground="#dfe6e9" BorderThickness="0" 
-                        Padding="12,5" FontWeight="SemiBold" Cursor="Hand"/>
-                <TextBlock Text="Settings" Style="{StaticResource MaterialDesignHeadline5TextBlock}" Foreground="White"/>
-            </DockPanel>
-            
-            <materialDesign:Card Padding="20">
-                <StackPanel>
-                    <TextBlock Text="General" FontWeight="Bold" Margin="0,0,0,10"/>
-                    
-                    <TextBox Text="{Binding DefaultDownloadPath}" 
-                             materialDesign:HintAssist.Hint="Default Download Path"
-                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                             Margin="0,0,0,10"/>
-                             
-                    <Button Command="{Binding BrowseFolderCommand}" Content="Browse" HorizontalAlignment="Right" Style="{StaticResource MaterialDesignOutlinedButton}"/>
-                    
-                    <Button Command="{Binding SaveSettingsCommand}" Content="Save" HorizontalAlignment="Left" Margin="0,20,0,0"/>
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <converters:InverseBooleanConverter x:Key="InverseBool"/>
+        <converters:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVis"/>
+
+        <Style x:Key="CardBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="#151928"/>
+            <Setter Property="BorderBrush" Value="#242b45"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+
+        <Style x:Key="SectionHeadingStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <Style x:Key="SectionSubheadingStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#8a99b5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+
+        <Style x:Key="InputLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#a0aec0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <Style x:Key="DarkInputBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#0f1322"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#2b3655"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="#00cec9"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="24,18,24,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top Header Navigation -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <StackPanel VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="⚙" Foreground="#00cec9" FontSize="20" FontWeight="Bold" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="Application Settings" Foreground="White" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
                 </StackPanel>
-            </materialDesign:Card>
-        </StackPanel>
+                <TextBlock Text="Configure multi-account credentials, network parallel workers, and download automation" 
+                           Foreground="#8a99b5" FontSize="12" Margin="28,2,0,0"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <!-- Save confirmation notification -->
+                <Border Background="#1b3d2f" BorderBrush="#00b894" BorderThickness="1" CornerRadius="6"
+                        Padding="12,6" Margin="0,0,12,0"
+                        Visibility="{Binding HasSaveStatus, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="{Binding SaveStatusMessage}" Foreground="#00b894" FontWeight="SemiBold" FontSize="12"/>
+                </Border>
+
+                <Button Command="{Binding BackCommand}"
+                        Content="← Back to Downloader"
+                        Background="#20253c" Foreground="#dfe6e9" BorderThickness="0" 
+                        Padding="14,8" FontWeight="SemiBold" Cursor="Hand" Height="34">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="6"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- Scrollable Settings Sections -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+            <StackPanel>
+
+                <!-- SECTION 1: iQiyi Platform & Multi-Account Vault -->
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,12">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="🎬" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="iQiyi (www.iq.com) Multi-Account Credentials Vault" Style="{StaticResource SectionHeadingStyle}"/>
+                                </StackPanel>
+                                <TextBlock Text="Manage VIP credentials for 1080p stream extraction with live fallback across Primary and Backup accounts" 
+                                           Style="{StaticResource SectionSubheadingStyle}"/>
+                            </StackPanel>
+
+                            <Border HorizontalAlignment="Right" VerticalAlignment="Top" 
+                                    Background="#1c233a" BorderBrush="#00cec9" BorderThickness="1" 
+                                    CornerRadius="4" Padding="8,4">
+                                <TextBlock Text="UMD-29 Multi-Account Failover Active" Foreground="#00cec9" FontSize="11" FontWeight="Bold"/>
+                            </Border>
+                        </Grid>
+
+                        <ItemsControl ItemsSource="{Binding IqiyiAccounts}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#0f1322" BorderBrush="#252d47" BorderThickness="1" CornerRadius="6" 
+                                            Padding="14" Margin="0,0,0,10">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- Card Header: Account Label + Toggle -->
+                                            <Grid Grid.Row="0" Margin="0,0,0,10">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Border Background="#1f2740" CornerRadius="4" Padding="8,3" Margin="0,0,10,0">
+                                                        <TextBlock Text="{Binding Label}" Foreground="#74b9ff" FontWeight="Bold" FontSize="12"/>
+                                                    </Border>
+                                                    <TextBlock Text="iQiyi VIP Account" Foreground="#8a99b5" FontSize="11" VerticalAlignment="Center"/>
+                                                </StackPanel>
+
+                                                <CheckBox IsChecked="{Binding IsActive}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                          Foreground="#00b894" FontSize="12" FontWeight="SemiBold" Content="Active for extraction &amp; failover"/>
+                                            </Grid>
+
+                                            <!-- Card Inputs: Email & Password -->
+                                            <Grid Grid.Row="1">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="16"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="Account Email / Username" Style="{StaticResource InputLabelStyle}"/>
+                                                    <TextBox Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" 
+                                                             Style="{StaticResource DarkInputBox}"
+                                                             materialDesign:HintAssist.Hint="Email address"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="Account Password" Style="{StaticResource InputLabelStyle}"/>
+                                                    <TextBox Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}" 
+                                                             Style="{StaticResource DarkInputBox}"
+                                                             materialDesign:HintAssist.Hint="Password"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- SECTION 2: Network Acceleration & Parallel Workers -->
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="⚡" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Engine Acceleration &amp; Parallel Workers" Style="{StaticResource SectionHeadingStyle}"/>
+                        </StackPanel>
+                        <TextBlock Text="Configure multi-threaded segmented chunk downloading and concurrency limits" 
+                                   Style="{StaticResource SectionSubheadingStyle}"/>
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Max Segment Workers -->
+                            <Border Grid.Column="0" Background="#0f1322" BorderBrush="#252d47" BorderThickness="1" CornerRadius="6" Padding="14">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <TextBlock Text="Segment Workers" Style="{StaticResource InputLabelStyle}" Margin="0"/>
+                                        <Border Background="#1f2740" CornerRadius="4" Padding="6,2" HorizontalAlignment="Right">
+                                            <TextBlock Text="{Binding MaxSegmentWorkers, StringFormat='{}{0} Threads'}" Foreground="#00cec9" FontWeight="Bold" FontSize="11"/>
+                                        </Border>
+                                    </Grid>
+                                    <Slider Minimum="1" Maximum="32" Value="{Binding MaxSegmentWorkers}" 
+                                            TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,4,0,6"/>
+                                    <TextBlock Text="Number of parallel HTTP chunk download threads (1 - 32)" Foreground="#69779b" FontSize="11"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Chunk Size -->
+                            <Border Grid.Column="2" Background="#0f1322" BorderBrush="#252d47" BorderThickness="1" CornerRadius="6" Padding="14">
+                                <StackPanel>
+                                    <TextBlock Text="Min Segment Chunk Size" Style="{StaticResource InputLabelStyle}"/>
+                                    <ComboBox ItemsSource="{Binding AvailableSegmentSizes}" SelectedItem="{Binding MinSegmentSizeMB}"
+                                              Background="#12162a" Foreground="White" BorderBrush="#2b3655" BorderThickness="1"
+                                              Padding="8,6" FontSize="13" Margin="0,0,0,8">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding StringFormat='{}{0} MB'}" Foreground="White"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <TextBlock Text="Minimum byte chunk threshold for parallel segmentation" Foreground="#69779b" FontSize="11"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Max Concurrent Downloads -->
+                            <Border Grid.Column="4" Background="#0f1322" BorderBrush="#252d47" BorderThickness="1" CornerRadius="6" Padding="14">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <TextBlock Text="Concurrent Queue Jobs" Style="{StaticResource InputLabelStyle}" Margin="0"/>
+                                        <Border Background="#1f2740" CornerRadius="4" Padding="6,2" HorizontalAlignment="Right">
+                                            <TextBlock Text="{Binding MaxConcurrentDownloads, StringFormat='{}{0} Active'}" Foreground="#a29bfe" FontWeight="Bold" FontSize="11"/>
+                                        </Border>
+                                    </Grid>
+                                    <Slider Minimum="1" Maximum="8" Value="{Binding MaxConcurrentDownloads}" 
+                                            TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,4,0,6"/>
+                                    <TextBlock Text="Simultaneous active video downloads in queue manager" Foreground="#69779b" FontSize="11"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- SECTION 3: Storage & Directory -->
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="📁" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Storage &amp; Default Directory" Style="{StaticResource SectionHeadingStyle}"/>
+                        </StackPanel>
+                        <TextBlock Text="Default local directory where completed media downloads and series are saved" 
+                                   Style="{StaticResource SectionSubheadingStyle}"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Grid.Column="0" Text="{Binding DefaultDownloadPath, UpdateSourceTrigger=PropertyChanged}" 
+                                     Style="{StaticResource DarkInputBox}"
+                                     materialDesign:HintAssist.Hint="Download folder path"/>
+
+                            <Button Grid.Column="1" Command="{Binding BrowseFolderCommand}" Content="📂 Browse..." 
+                                    Background="#20263f" Foreground="#f1c40f" BorderThickness="0" 
+                                    Padding="16,8" Margin="10,0,0,0" FontWeight="SemiBold" Cursor="Hand" Height="38">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="6"/>
+                                    </Style>
+                                </Button.Resources>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- SECTION 4: System Automation & Media Processing -->
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="🛠️" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Automation &amp; Media Post-Processing" Style="{StaticResource SectionHeadingStyle}"/>
+                        </StackPanel>
+                        <TextBlock Text="Clipboard monitoring and FFmpeg post-processing options" 
+                                   Style="{StaticResource SectionSubheadingStyle}"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Clipboard Monitoring & Metadata -->
+                            <Border Grid.Column="0" Background="#0f1322" BorderBrush="#252d47" BorderThickness="1" CornerRadius="6" Padding="14">
+                                <StackPanel>
+                                    <CheckBox IsChecked="{Binding EnableClipboardMonitoring}" 
+                                              Foreground="White" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,8"
+                                              Content="Auto-detect copied video URLs from Clipboard"/>
+                                    <TextBlock Text="Automatically monitors Windows clipboard (WM_CLIPBOARDUPDATE) and pre-fills drama search" 
+                                               Foreground="#69779b" FontSize="11" Margin="24,0,0,12"/>
+
+                                    <CheckBox IsChecked="{Binding EmbedMetadata}" 
+                                              Foreground="White" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,8"
+                                              Content="Embed video metadata &amp; episode titles"/>
+                                    <CheckBox IsChecked="{Binding EmbedThumbnail}" 
+                                              Foreground="White" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4"
+                                              Content="Embed poster artwork into video file"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Audio Extraction -->
+                            <Border Grid.Column="2" Background="#0f1322" BorderBrush="#252d47" BorderThickness="1" CornerRadius="6" Padding="14">
+                                <StackPanel>
+                                    <CheckBox IsChecked="{Binding ExtractAudio}" 
+                                              Foreground="White" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,8"
+                                              Content="Extract Audio Only (Convert Video to Audio)"/>
+                                    <TextBlock Text="Automatically extract soundtrack using FFmpeg after download" 
+                                               Foreground="#69779b" FontSize="11" Margin="24,0,0,12"/>
+
+                                    <TextBlock Text="Audio Format" Style="{StaticResource InputLabelStyle}"/>
+                                    <ComboBox ItemsSource="{Binding AvailableAudioFormats}" SelectedItem="{Binding AudioFormat}"
+                                              Background="#12162a" Foreground="White" BorderBrush="#2b3655" BorderThickness="1"
+                                              Padding="8,6" FontSize="13">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}" Foreground="White"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Bottom Action Bar: Save & Reset -->
+        <Border Grid.Row="2" Background="#121524" BorderBrush="#252d47" BorderThickness="0,1,0,0" Padding="0,14,0,0" Margin="0,8,0,0">
+            <Grid>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <Button Command="{Binding ResetDefaultsCommand}" Content="↺ Restore Defaults" 
+                            Background="#22273e" Foreground="#e17055" BorderThickness="0" 
+                            Padding="14,8" FontWeight="SemiBold" Cursor="Hand" Height="36">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="6"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Command="{Binding SaveSettingsCommand}" 
+                            Content="💾 Save Settings" 
+                            FontWeight="Bold" Foreground="White" BorderThickness="0" 
+                            Padding="24,8" Cursor="Hand" Height="38">
+                        <Button.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#00b894" Offset="0"/>
+                                <GradientStop Color="#0984e3" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Button.Background>
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="6"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>

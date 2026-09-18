@@ -16,11 +16,17 @@ namespace Start.Infrastructure.Services
     {
         private const string YtDlpExecutable = "yt-dlp.exe";
         private const string DefaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
+        private readonly ISettingsRepository? _settingsRepository;
         private readonly DownloadProcessingSettings? _processingSettings;
 
         public YtDlpExtractorEngine(DownloadProcessingSettings? processingSettings = null)
         {
             _processingSettings = processingSettings;
+        }
+
+        public YtDlpExtractorEngine(ISettingsRepository settingsRepository)
+        {
+            _settingsRepository = settingsRepository;
         }
 
         public async Task<List<DownloadJob>> AnalyzeUrlAsync(string url)
@@ -292,9 +298,19 @@ namespace Start.Infrastructure.Services
         private string BuildAuthArguments(string url)
         {
             var platform = DetectSourcePlatform(url);
-            if (platform == "iQiyi" && _processingSettings?.IqiyiAccounts != null)
+            var settings = _processingSettings;
+            if (settings == null && _settingsRepository != null)
             {
-                var account = _processingSettings.IqiyiAccounts.FirstOrDefault(a => a.IsActive);
+                try
+                {
+                    settings = _settingsRepository.LoadAsync().GetAwaiter().GetResult();
+                }
+                catch { }
+            }
+
+            if (platform == "iQiyi" && settings?.IqiyiAccounts != null)
+            {
+                var account = settings.IqiyiAccounts.FirstOrDefault(a => a.IsActive);
                 if (account != null && !string.IsNullOrEmpty(account.Email) && !string.IsNullOrEmpty(account.Password))
                 {
                     return $"--username \"{account.Email}\" --password \"{account.Password}\"";

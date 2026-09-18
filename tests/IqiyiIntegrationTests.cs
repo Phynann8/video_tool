@@ -71,10 +71,11 @@ namespace Downloader.Tests
         }
 
         [Fact]
-        public void YtDlpExtractorEngine_BuildAuthArguments_FallsBackToActiveBackup_WhenPrimaryDisabled()
+        public void YtDlpExtractorEngine_BuildAuthArguments_FallsBackToSecondaryBackup_WhenPrimaryAndBackup1Disabled()
         {
             var settings = new DownloadProcessingSettings();
             settings.IqiyiAccounts[0].IsActive = false; // Disable primary
+            settings.IqiyiAccounts[1].IsActive = false; // Disable backup 1
 
             var extractor = new YtDlpExtractorEngine(settings);
             var method = typeof(YtDlpExtractorEngine).GetMethod("BuildAuthArguments",
@@ -84,8 +85,37 @@ namespace Downloader.Tests
             var args = method.Invoke(extractor, new object[] { "https://www.iq.com/play/198yzaqjce8" }) as string;
 
             Assert.NotNull(args);
-            Assert.Contains("dannydaemon666@yahoo.co.uk", args);
-            Assert.Contains("cucumber666", args);
+            Assert.Contains("kero_aum@hotmail.com", args);
+            Assert.Contains("sichul13102", args);
+        }
+
+        [Fact]
+        public async Task YtDlpExtractorEngine_BuildAuthArguments_UsesSettingsRepositoryWhenInjected()
+        {
+            var settings = new DownloadProcessingSettings();
+            settings.IqiyiAccounts[0].Email = "custom_primary@iq.com";
+            settings.IqiyiAccounts[0].Password = "custom_pass123";
+
+            var mockRepo = new InMemorySettingsRepository(settings);
+            var extractor = new YtDlpExtractorEngine(mockRepo);
+
+            var method = typeof(YtDlpExtractorEngine).GetMethod("BuildAuthArguments",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            Assert.NotNull(method);
+            var args = method.Invoke(extractor, new object[] { "https://www.iq.com/play/198yzaqjce8" }) as string;
+
+            Assert.NotNull(args);
+            Assert.Contains("custom_primary@iq.com", args);
+            Assert.Contains("custom_pass123", args);
+        }
+
+        private class InMemorySettingsRepository : Start.Core.Interfaces.ISettingsRepository
+        {
+            private DownloadProcessingSettings _settings;
+            public InMemorySettingsRepository(DownloadProcessingSettings settings) => _settings = settings;
+            public Task<DownloadProcessingSettings> LoadAsync() => Task.FromResult(_settings);
+            public Task SaveAsync(DownloadProcessingSettings settings) { _settings = settings; return Task.CompletedTask; }
         }
     }
 }

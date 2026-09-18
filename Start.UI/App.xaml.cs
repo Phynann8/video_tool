@@ -32,10 +32,11 @@ namespace Start.UI
 
             // Infrastructure & Core Services
             services.AddSingleton<IDownloadRepository>(provider => new SqliteDownloadRepository(dbPath));
+            services.AddSingleton<ISettingsRepository>(provider => new SqliteSettingsRepository(dbPath));
             services.AddSingleton<DatabaseBootstrap>(provider => new DatabaseBootstrap(dbPath));
             
             services.AddSingleton<DramaboxClient>();
-            services.AddSingleton<IExtractorEngine, YtDlpExtractorEngine>();
+            services.AddSingleton<IExtractorEngine>(provider => new YtDlpExtractorEngine(provider.GetRequiredService<ISettingsRepository>()));
             services.AddSingleton<IExtractorEngine, DramaBoxExtractorEngine>();
             services.AddSingleton<IExtractorEngine, IflixExtractorEngine>();
             services.AddSingleton<IExtractorEngine, KissKhExtractorEngine>();
